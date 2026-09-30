@@ -42,6 +42,16 @@
   --search-h: 38px;
   --tap: 44px;
   --shell-max: 1500px;
+  /* Home hero (design): slide height from 768px, and the part of it left visible above the overlapping cards. */
+  --hero-h: 300px;
+  --hero-body-h: 300px;
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --hero-h: 440px;
+    --hero-body-h: 260px;
+  }
 }
 
 @layer base {
@@ -243,6 +253,11 @@ dialog.mini-cart::backdrop {
   dialog.mini-cart {
     transition: none;
   }
+}
+
+/* The home page sits on the light gray page background at every width, so its white cards stand out (docs/ux-spec.md). */
+body:has([data-page="home"]) {
+  background: var(--color-page-gray);
 }
 
 /* The cart, checkout and order pages sit on the light gray page background from tablet width up (docs/ux-spec.md). */
