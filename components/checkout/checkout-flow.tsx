@@ -79,8 +79,17 @@ export function CheckoutFlow({ fixedNow }: { fixedNow: string | null }) {
   }, [requested, allowed]);
 
   if (!ready) return <div aria-busy="true" className="min-h-[40vh]" />;
-  if (empty && !placing) return <EmptyCheckout />;
-  if (placing || requested === null || !allowed) return <div aria-busy="true" className="min-h-[40vh]" />;
+  // The order is saved and the cart cleared: Place order is gone (it cannot be activated again) until the
+  // confirmation replaces this announcement.
+  if (placing) {
+    return (
+      <div role="status" aria-busy="true" data-shell="placing-order" className="min-h-[40vh] rounded-lg bg-white p-6 text-lg font-bold">
+        Placing your order…
+      </div>
+    );
+  }
+  if (empty) return <EmptyCheckout />;
+  if (requested === null || !allowed) return <div aria-busy="true" className="min-h-[40vh]" />;
 
   const go = (step: CheckoutStep) => {
     checkoutStore.getState().setNotice(null);

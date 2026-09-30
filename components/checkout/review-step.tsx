@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useCartLookup } from "@/components/cart/cart-provider";
+import { ignoreRestOfGesture } from "@/components/checkout/ignore-rest-of-gesture";
 import { useCheckoutModel } from "@/components/checkout/use-checkout-model";
 import { arrivalLabel } from "@/lib/checkout/delivery";
 import { maskedCard } from "@/lib/checkout/payment";
@@ -18,9 +19,11 @@ import { useRouter } from "next/navigation";
 const CHANGE = "inline-flex min-h-[var(--tap)] items-center text-sm text-link hover:text-price-sale hover:underline sm:min-h-0";
 
 /**
- * Step 4: read-only review, every value derived from the live cart and checkout state, then Place order. The
- * click handler is guarded synchronously (a ref, not just state) so a double click cannot run it twice, and the
- * order itself is idempotent per submission id (lib/checkout/place-order.ts).
+ * Step 4: read-only review, every value derived from the live cart and checkout state, then Place order. Defense in
+ * depth: the handler is guarded synchronously (a ref, not just state) so a double click cannot run it twice; on success
+ * the button is replaced by an announced "Placing your order" state and the rest of the click gesture is ignored
+ * (ignoreRestOfGesture), so it cannot activate a control that moves under the pointer; and the order itself is
+ * idempotent per submission id (lib/checkout/place-order.ts).
  */
 export function ReviewStep({ now, fixedNow, onPlaced }: { now: Date; fixedNow: string | null; onPlaced: () => void }) {
   const router = useRouter();
@@ -43,6 +46,7 @@ export function ReviewStep({ now, fixedNow, onPlaced }: { now: Date; fixedNow: s
       setError(ORDER_FAILURE_MESSAGES[result.reason]);
       return;
     }
+    ignoreRestOfGesture();
     onPlaced();
     router.push(`/orders/${result.orderId}/confirmation`);
   };

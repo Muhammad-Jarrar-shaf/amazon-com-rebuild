@@ -450,6 +450,9 @@ test.describe("URL state", () => {
 
   test("the search field follows the URL on Back and Forward", async ({ page }) => {
     await page.goto("/s?k=headphones");
+    // The field is filled from the URL by an effect after hydration. Typing before that merged the texts under load
+    // ("headphoneslaptop"), a known S3 race recorded in docs/testing-strategy.md; this test is about Back/Forward.
+    await expect(searchBox(page)).toHaveValue("headphones");
     await searchBox(page).fill("laptop");
     await searchBox(page).press("Enter");
     await expect(page).toHaveURL(/\/s\?k=laptop$/);

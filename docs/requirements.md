@@ -71,7 +71,7 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 | FR-CHK-4 | Payment is labeled "Test mode": `4242 4242 4242 4242` is accepted; `4000 0000 0000 0002` yields a "Your card was declined" error state on the payment step (no order can follow); any other number fails format/Luhn validation with an inline error; expiry must be in the future; CVC 3 digits | D | MVP | J1, J5 |
 | FR-CHK-5 | Only the card's last 4 digits and brand label are retained after payment; the full number and CVC are never stored | D | MVP | J1 |
 | FR-CHK-6 | Review shows items, address, delivery choice, payment last-4, and totals (items, shipping, estimated tax, order total) recomputed from the catalog, not from cart-stored prices | D | MVP | J1 |
-| FR-CHK-7 | "Place your order" is disabled while submitting; a double-click or a reload during submit creates exactly one order | D | MVP | J1 |
+| FR-CHK-7 | "Place your order" is disabled while submitting; a double-click or a reload during submit creates exactly one order; the rest of a double click that placed the order never activates another control, and rapid Enter/Space create one order | D | MVP | J1 |
 | FR-CHK-8 | Estimated tax is a flat 8% of the items subtotal, rounded half up to the cent | D | MVP | J1 |
 
 ### Orders and confirmation

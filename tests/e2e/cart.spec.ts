@@ -381,7 +381,10 @@ test.describe("mini-cart interaction and keyboard", () => {
     await expect(line.getByRole("textbox", { name: /Quantity of/ })).toHaveValue("3");
   });
 
-  test("clicking the backdrop closes it and the page behind is not locked afterwards", async ({ page }) => {
+  test("clicking the backdrop closes it and the page behind is not locked afterwards", async ({ page, isMobile }) => {
+    // At 375px the panel is full width (min(100vw, 26rem)), so there is no backdrop to click. The mobile run used to
+    // pass only because the press landed during the slide-in animation, before the panel covered x=5.
+    test.skip(isMobile, "no backdrop area at 375px");
     await addFromProductPage(page, KNIFE);
     await page.mouse.click(5, 300);
     await expect(dialog(page)).toBeHidden();

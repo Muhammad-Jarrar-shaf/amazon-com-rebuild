@@ -25,7 +25,8 @@ function trackErrors(page: Page): string[] {
   const problems: string[] = [];
   page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
   page.on("console", (message) => {
-    if (message.type() === "error") problems.push(`console: ${message.text()}`);
+    // For a failed resource the message text has no URL; the location does, so a failure names its source.
+    if (message.type() === "error") problems.push(`console: ${message.text()} (${message.location().url || page.url()})`);
   });
   page.on("response", (response) => {
     if (response.status() >= 400) problems.push(`http ${response.status()}: ${response.url()}`);
@@ -301,14 +302,65 @@ test.describe("validation and error states", () => {
 });
 
 test.describe("order creation", () => {
-  test("a double click on Place order creates exactly one order", async ({ page }) => {
+  test("a double click on Place order creates exactly one order and stays on its confirmation", async ({ page }) => {
     await toReview(page, "one-day");
     await page.locator('[data-shell="place-order"]').dblclick();
-    // The second click of a real double click may land on whatever the new page shows under the cursor, so assert
-    // on the outcome that matters: exactly one order, and the cart is empty.
-    await expect.poll(async () => (await orders(page)).length).toBe(1);
+    await expect(page).toHaveURL(/\/orders\/111-\d{7}-\d{7}\/confirmation$/);
+    await expect(page.locator('[data-shell="confirmation"]')).toBeVisible();
+    expect(await orders(page)).toHaveLength(1);
     await page.goto("/checkout?step=review");
     await expect(page.locator('[data-shell="checkout-empty"]')).toBeVisible();
+    expect(await orders(page)).toHaveLength(1);
+    await expect(badge(page, 0)).toBeVisible();
+  });
+
+  test("the first activation locks Place order at once: no enabled button remains and the wait is announced", async ({ page }) => {
+    await toReview(page);
+    const after = await page.locator('[data-shell="place-order"]').evaluate(async (button) => {
+      (button as HTMLButtonElement).click();
+      await new Promise((resolve) => setTimeout(resolve, 0)); // let React commit; the confirmation is not loaded yet
+      const again = document.querySelector<HTMLButtonElement>('[data-shell="place-order"]');
+      const status = document.querySelector('[data-shell="placing-order"]');
+      return { enabledButton: !!again && !again.disabled, busy: status?.getAttribute("aria-busy"), role: status?.getAttribute("role"), text: status?.textContent };
+    });
+    expect(after).toEqual({ enabledButton: false, busy: "true", role: "status", text: "Placing your order…" });
+    await expect(page).toHaveURL(/confirmation$/);
+    expect(await orders(page)).toHaveLength(1);
+  });
+
+  test("the second press of a double click cannot activate a confirmation control; a deliberate click still works", async ({ page }) => {
+    await toReview(page);
+    await page.locator('[data-shell="place-order"]').click();
+    await expect(page.locator('[data-shell="confirmation"]')).toBeVisible();
+    const confirmationUrl = page.url();
+    // The second press of a double click that started on Place order: clickCount 2, with no first press on this page.
+    for (const name of ["Continue shopping", "View your orders"]) {
+      const link = main(page).getByRole("link", { name });
+      await link.scrollIntoViewIfNeeded(); // page.mouse presses raw coordinates; below the fold it would miss
+      const target = await box(link);
+      await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2);
+      await page.mouse.down({ clickCount: 2 });
+      await page.mouse.up({ clickCount: 2 });
+    }
+    await expect(page.locator('[data-shell="confirmation"]')).toBeVisible();
+    expect(page.url()).toBe(confirmationUrl);
+    // A real click (and a double click that starts here) still navigates.
+    await main(page).getByRole("link", { name: "View your orders" }).dblclick();
+    await expect(page).toHaveURL(/\/orders$/);
+    await expect(page.locator('[data-shell="order-card"]')).toHaveCount(1);
+  });
+
+  test("rapid repeated Enter and Space on Place order create one order and do not leave the confirmation", async ({ page }) => {
+    await toReview(page);
+    await page.locator('[data-shell="place-order"]').focus();
+    for (let i = 0; i < 4; i += 1) {
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Space");
+    }
+    await expect(page).toHaveURL(/confirmation$/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+    for (let i = 0; i < 3; i += 1) await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/confirmation$/);
     expect(await orders(page)).toHaveLength(1);
     await expect(badge(page, 0)).toBeVisible();
   });
@@ -367,16 +419,52 @@ test.describe("order creation", () => {
     await expect(cards.nth(1).locator('[data-shell="order-list-total"]')).toHaveText("$53.99");
   });
 
+  test("a multi-item, multi-variant order carries exact integer-cent totals from review to confirmation to orders", async ({ page }) => {
+    await addToCart(page, HERO, { variant: "space-silver", extra: 1 }); // 2 x $84.99
+    await toReview(page, "one-day"); // + the knife, 1 x $49.99
+    // Items 169.98 + 49.99 = 219.97; one-day 19.99; tax 8% of 219.97 = 17.5976 -> 17.60; total 257.56.
+    const review = page.locator('[data-shell="review"]');
+    await expect(review.locator('[data-shell="review-item"]')).toHaveCount(2);
+    await expect(review).toContainText("Color: Space Silver · Qty 2 × $84.99");
+    await expect(review).toContainText("Qty 1 × $49.99");
+    await expect(page.locator('[data-shell="summary-shipping"]')).toHaveText("$19.99");
+    await expect(page.locator('[data-shell="summary-total"]')).toHaveText("$257.56");
+    await expect(review.locator('[data-shell="review-total"]')).toHaveText("$257.56");
+    await page.locator('[data-shell="place-order"]').click();
+    const confirmation = page.locator('[data-shell="confirmation"]');
+    await expect(confirmation.locator('[data-shell="order-item"]')).toHaveCount(2);
+    await expect(confirmation).toContainText("$169.98");
+    await expect(confirmation).toContainText("$17.60");
+    await expect(confirmation.locator('[data-shell="order-total"]')).toHaveText("$257.56");
+    await page.goto("/orders");
+    await expect(page.locator('[data-shell="order-card"] [data-shell="order-item"]')).toHaveCount(2);
+    await expect(page.locator('[data-shell="order-list-total"]')).toHaveText("$257.56");
+  });
+
   test("stored data never contains the card number or CVC", async ({ page }) => {
-    await toReview(page);
+    await toReview(page); // pays with CVC "123"
     await page.locator('[data-shell="place-order"]').click();
     await expect(page).toHaveURL(/confirmation$/);
     const everything = await page.evaluate(() => JSON.stringify({ ...window.localStorage }) + JSON.stringify({ ...window.sessionStorage }));
     expect(everything).not.toContain("4242424242424242");
     expect(everything).not.toContain("4242 4242");
-    expect(everything).not.toContain("123");
     expect(everything).toContain("4242"); // the last four
     expect(everything).not.toContain("555-0142");
+
+    // The CVC is 3 digits, so a substring check over everything would also hit random submission ids ("…6123-…").
+    // Walk every stored value instead: no field is card-like, no value is the CVC, and payments are {brand, last4}.
+    const fields: [path: string, value: unknown][] = [];
+    const walk = (value: unknown, path: string) => {
+      if (value && typeof value === "object") for (const [key, child] of Object.entries(value)) walk(child, `${path}.${key}`);
+      else fields.push([path, value]);
+    };
+    const stored = await page.evaluate(() => ({ ...window.localStorage, ...window.sessionStorage }));
+    for (const [key, raw] of Object.entries(stored)) walk(JSON.parse(raw), key);
+    expect(fields.length).toBeGreaterThan(10);
+    expect(fields.filter(([path]) => /cvc|cvv|security|card.?number|\.number$|expiry/i.test(path))).toEqual([]);
+    expect(fields.filter(([, value]) => String(value) === "123" || (typeof value === "string" && /\b123\b/.test(value)))).toEqual([]);
+    const payments = fields.filter(([path]) => /\.payment\./.test(path)).map(([path]) => path.replace(/^.*\.payment\./, ""));
+    expect(new Set(payments)).toEqual(new Set(["brand", "last4"]));
   });
 });
 
@@ -544,6 +632,7 @@ test.describe("keyboard-only checkout", () => {
 
 test.describe("accessibility and layout", () => {
   test("axe: address, delivery, payment (with errors), review, confirmation, orders, empty states", async ({ page }) => {
+    test.slow(); // nine full-page axe scans (about 16s alone) exceeded 30s under parallel load
     await page.goto("/checkout");
     await expect(page.locator('[data-shell="checkout-empty"]')).toBeVisible();
     expect(await seriousViolations(page)).toEqual([]);

@@ -15,6 +15,10 @@ export default defineConfig({
   use: {
     baseURL: externalBaseUrl ?? `http://localhost:${PORT}`,
     trace: "retain-on-failure",
+    // The app scrolls smoothly unless reduced motion is preferred (app/globals.css). Under parallel load an animated
+    // scroll-into-view let clicks land on stale coordinates (trace: "element is not stable", "<p> intercepts pointer
+    // events"), so a Continue click sometimes hit the text above the button. Tests assert behavior, not animation.
+    reducedMotion: "reduce",
   },
   projects: [
     {
