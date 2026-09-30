@@ -13,6 +13,7 @@ Operational rules for the rest of the 8x assignment: a rebuild of amazon.com's c
 - Server Components by default; `"use client"` only for interactivity ([architecture](docs/architecture.md#3-server--client-boundary)). No `next/og`, Server Actions, Route Handlers, middleware or runtime image optimization without an ADR.
 - Money is **integer cents** via `lib/pricing` only; time comes from `lib/clock`; cart lines store ids and quantities, never prices.
 - Small pure functions in `lib/*` for logic so it is unit-testable; UI stays thin.
+- **Client components never import `lib/catalog` (its index pulls the whole seed catalog into the browser bundle).** Use `lib/catalog/variants`, `lib/catalog/types`, `lib/pricing`, `lib/quantity` and `lib/purchase` (which take product objects).
 
 ## Workflow
 - Work in **small vertical slices** S0-S10 exactly as in the [delivery plan](docs/delivery-plan.md). One slice = build + tests + deploy.
@@ -32,7 +33,7 @@ Operational rules for the rest of the 8x assignment: a rebuild of amazon.com's c
 ## Security and assets
 - **No secrets** in the repo, logs, docs, or commit messages. `.env.example` documents variables; real values never committed. Run a secret scan on every staged diff before committing.
 - **Never store full card numbers or CVC** anywhere (state after validation, storage, logs). Payment is a test-mode mock only.
-- **No Amazon-hosted assets** (images, scripts, fonts, logos) and no hotlinking. Follow [ADR-0004](docs/decisions/0004-asset-strategy.md); record every downloaded asset in `public/products/CREDITS.md`, and skip any asset whose license is unclear.
+- **No Amazon-hosted assets** (images, scripts, fonts, logos) and no hotlinking. Follow [ADR-0004](docs/decisions/0004-asset-strategy.md); record every downloaded asset in `public/assets/CREDITS.md`, and skip any asset whose license is unclear.
 - Do not attempt real purchases, real accounts, or real payment providers.
 
 ## Git discipline

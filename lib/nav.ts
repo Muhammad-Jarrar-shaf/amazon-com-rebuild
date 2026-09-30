@@ -11,11 +11,12 @@ export const PAGE_TOP_ID = "site-top";
  * unavailable (see NavLink) instead of leading to a 404. Add a route here in the same
  * commit as the slice that implements it: S3 adds "/s", S4 "/cart", S5 "/orders".
  */
-export const AVAILABLE_ROUTES: readonly string[] = ["/"];
+export const AVAILABLE_ROUTES: readonly string[] = ["/", "/dp/*"];
 
+/** Exact match, or a prefix match for routes ending in "/*" (a dynamic segment: "/dp/*" covers "/dp/<id>"). */
 export function isAvailable(href: string): boolean {
   const path = href.split(/[?#]/)[0] ?? "";
-  return AVAILABLE_ROUTES.includes(path);
+  return AVAILABLE_ROUTES.some((route) => (route.endsWith("/*") ? path.startsWith(route.slice(0, -1)) && path.length > route.length - 1 : route === path));
 }
 
 export const UNAVAILABLE_HINT = "Not available in this build yet";

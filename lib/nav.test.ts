@@ -31,6 +31,14 @@ describe("isAvailable", () => {
     expect(isAvailable("/s?dept=books")).toBe(false);
   });
 
+  it("supports the dynamic product route via a prefix pattern, but not the bare prefix", () => {
+    expect(isAvailable("/dp/B0HALO0AUR")).toBe(true);
+    expect(isAvailable("/dp/B0HALO0AUR?variant=space-silver")).toBe(true);
+    expect(isAvailable("/dp/")).toBe(false);
+    expect(isAvailable("/dp")).toBe(false);
+    expect(isAvailable("/dpx/B0HALO0AUR")).toBe(false);
+  });
+
   it("only lists absolute paths without query strings", () => {
     for (const route of AVAILABLE_ROUTES) expect(route).toMatch(/^\/[^?#]*$/);
   });

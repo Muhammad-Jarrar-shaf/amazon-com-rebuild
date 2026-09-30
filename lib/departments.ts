@@ -13,6 +13,12 @@ export type DepartmentSlug = (typeof DEPARTMENTS)[number]["slug"];
 
 export const ALL_DEPARTMENTS_LABEL = "All Departments";
 
+export function getDepartment(slug: DepartmentSlug): (typeof DEPARTMENTS)[number] {
+  const department = DEPARTMENTS.find((candidate) => candidate.slug === slug);
+  if (!department) throw new Error(`unknown department: ${slug}`);
+  return department;
+}
+
 // The results route arrives in S3; this is the URL shape that slice will parse (FR-SRCH-8).
 export function departmentHref(slug: DepartmentSlug): string {
   return `/s?dept=${slug}`;

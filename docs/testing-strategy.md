@@ -46,3 +46,14 @@ After each deploy (and in S9 from a cold clone): run the J1 test against the pub
 - Every slice ends with `pnpm typecheck && pnpm lint && pnpm test && pnpm build` green ([CLAUDE.md](../CLAUDE.md)).
 - **G1** (after S5 and the test harness): J1 desktop + J4 mobile smoke + axe pass on the **deployed** build.
 - Submission gate: [delivery-plan.md acceptance criteria](delivery-plan.md#acceptance-criteria).
+
+## 7. As built (through S2)
+**Unit (Vitest, `pnpm test`, 78 tests):** `lib/pricing`, `quantity`, `availability`, `delivery` (+ `clock`), `format`/`color`, `nav`, `catalog/catalog.test.ts` (lookup, related, featured, variant selection, availability states, `resolvePurchase`, search records), `catalog/data.test.ts` (seed integrity: unique ids, integer cents, compare-at above price, every related id resolves, every asset file exists and is credited, demo states present) and `site`.
+
+**E2E (Playwright, `pnpm e2e`, desktop 1440 + mobile 375):** `smoke.spec.ts`, `shell.spec.ts` (S1) and `pdp.spec.ts` (S2: content, gallery, variants incl. the disabled/unavailable variant and URL state, quantity bounds and keyboard, the honest add-to-cart notice, product states, invalid id 404, related navigation, image-failure fallback, desktop layout at 1440/1280/1024/768/375, mobile order and 44px targets, axe on six PDP states, and every product page at both widths).
+
+**Determinism:** the Playwright web server sets `APP_FIXED_NOW=2026-10-01T12:00:00Z` (see `lib/clock.ts`), so delivery dates are asserted exactly ("Tuesday, October 6"); against an external `E2E_BASE_URL` the tests match the pattern instead. `reuseExistingServer` is off unless `E2E_REUSE_SERVER=1`, so a run always builds and tests the current code.
+
+**Overflow metric (a real defect in the tests, found in S2):** `scrollWidth - innerWidth` is **not** a valid check under mobile emulation, because the browser widens the layout viewport to fit overflowing content and the difference reads 0. The tests use `documentElement.scrollWidth - documentElement.clientWidth`, and this was proven by a mutation check: removing the fix for a real overflow (sr-only text inside the related rail escaping its scroll container) makes `every product page ... fits the viewport` fail with `Received: 561`. Re-running the S1 shell tests with the corrected metric found no hidden overflow.
+
+**When a fix is claimed for a defect, prove the test can fail:** temporarily revert the fix, confirm the test goes red, restore it (as done for the overflow above).

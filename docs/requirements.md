@@ -48,7 +48,7 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 | FR-PDP-8 | Add to cart adds the selected variant x quantity, opens the mini-cart, and updates the header count | O | MVP | J1 |
 | FR-PDP-9 | "About this item" bullets and a specifications table | O | MVP | |
 | FR-PDP-10 | A related-products rail with at least 4 items linking to PDPs | O | MVP | |
-| FR-PDP-11 | Buy Now: adds the item and goes straight to `/checkout` | O | Stretch | |
+| FR-PDP-11 | Buy Now: adds the item and goes straight to `/checkout` | O | Stretch | **Deferred in S2**: not rendered, because it would need the cart (S4) and checkout (S5) it skips through; revisit after gate G1 |
 | FR-PDP-12 | Lower-page content (frequently bought together, from the brand, what's in the box, reviews list) | O | Stretch | |
 
 ### Cart

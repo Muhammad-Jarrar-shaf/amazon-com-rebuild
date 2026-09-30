@@ -4,6 +4,7 @@ import { defineConfig, devices } from "@playwright/test";
 // against a deployed site instead (production smoke).
 const externalBaseUrl = process.env.E2E_BASE_URL;
 const PORT = 3100;
+const FIXED_NOW = "2026-10-01T12:00:00Z";
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -37,6 +38,8 @@ export default defineConfig({
     : {
         command: `pnpm build && pnpm start --port ${PORT}`,
         url: `http://localhost:${PORT}`,
+        // Pin the clock so delivery estimates are deterministic (lib/clock.ts): Thursday 2026-10-01.
+        env: { ...(process.env as Record<string, string>), APP_FIXED_NOW: FIXED_NOW },
         // Fresh build by default: silently reusing a stale server would test old code. Opt in with E2E_REUSE_SERVER=1.
         reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
         timeout: 240_000,

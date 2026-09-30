@@ -6,7 +6,7 @@ The simplest architecture that can deliver a polished, reliable golden path (J1)
 One Next.js app, no database, no external services, no secrets. Catalog data ships in the repo and is read on the server; the cart and orders live in the visitor's browser. Deployed to Vercel.
 
 ```
-Browser ── server-rendered pages (Server Components) ── lib/catalog ── data/products.ts
+Browser ── server-rendered pages (Server Components) ── lib/catalog ── data/products/*
    │                                                        ▲
    └── client islands: SearchBox, Gallery/Variants, Cart, Checkout
             │  Zustand store (cart, orders) ⇄ localStorage
@@ -30,11 +30,13 @@ No other runtime dependencies without an ADR or a written justification in the c
 - **Server Components (default):** layout shell, home, results (`/s`), PDP (`/dp/[id]`), category pages, static footer. They call `lib/catalog` directly; no Route Handlers or Server Actions in MVP.
 - **Client Components (opt-in with `"use client"`):** shell interactivity (`SearchBar`, `MenuButton`, `NavDrawer` on a native `<dialog>`, `MobileBanner`), `SearchBox` (suggestions, keyboard, built on the shell's `SearchBar` in S3), `FilterDrawer`/`SortSelect` (URL updates), `Gallery` + `VariantPicker` + `BuyBox` (PDP interactivity), `MiniCart`, cart page, checkout stepper, `HeroCarousel`.
 - Client components receive plain serializable props (product DTOs), never functions or class instances.
+- **Bundle rule (S2):** client components must not import `lib/catalog` (its index imports the seed data, so the whole catalog would ship to every browser). They use the data-free modules instead: `lib/catalog/types`, `lib/catalog/variants` (default/selected variant, availability), `lib/pricing`, `lib/quantity`, `lib/purchase` (takes the product object) and `lib/cart-boundary`.
+- **Product page composition (S2):** `app/dp/[id]/page.tsx` (server, dynamic: it reads `?variant=`) looks up the product and renders one `.pdp-grid` inside a client `ProductProvider`, which holds the selected variant and quantity. Server components (header/rating, About, details, related rail) stay static; client components (`ProductGallery`, `PriceBlock`, `VariantPicker`, `BuyBox`) read the provider so one variant change updates image, price, availability and the URL together. Grid areas rearrange the same DOM per breakpoint (`.pdp-grid` in `app/globals.css`).
 - Anything reading `localStorage` renders a stable server placeholder first and hydrates after mount to avoid hydration mismatch (e.g. cart count shows after mount).
 
 ## 4. Data
-- `data/products.ts`: typed array of `Product` (id, slug, title, brand, department, tags, priceCents, listPriceCents?, rating, ratingCount, variants[], images, bullets[], specs{}, stock, shipping flags). About 30 products across about 6 departments; the hero journey (headphones family) is fully populated with 3 color variants; supporting products may have one variant. Validated at build/test time with a schema check (unique ids, variant references valid, images exist or fallback allowed).
-- `lib/catalog`: pure functions: `search(query, {dept})`, `suggest(prefix)`, `applyFilters(list, {brands, minRating, priceMin, priceMax})`, `sortBy(list, key)`, `paginate(list, page, size=16)`, `getById`, `related(product)`. All deterministic and unit-tested.
+- `data/products/<department>.ts` (six files, aggregated by `data/products/index.ts`): typed `Product` records (id, title, brand, byline, department, category, description, bullets, specs, variants, rating, ratingCount, boughtPastMonth, badge, shipping, seller, relatedIds, tags, featuredRank). Each variant carries its own price, compare-at price, images, stock and shipping restriction; availability is derived from stock and the restriction (`lib/availability`), never stored. 30 products across 6 departments; the headphone family is the fully populated hero (3 colors, a 3-image gallery, distinct prices, one unavailable variant). `data/images.ts` builds `ImageRef`s (a local photo path, or `null` for the generated illustration). Seed integrity is enforced by `lib/catalog/data.test.ts`.
+- `lib/catalog` (server-side; imports the seed data): `getAllProducts`, `getProductById`, `getProductsByDepartment`, `getRelatedProducts`, `getFeaturedProducts` (rank order, stable), `getBreadcrumb`, `getDisplayPrice`, and the S3-ready `getSearchIndex`/`toSearchRecord`/`normalizeSearchText`. Variant helpers live in the data-free `lib/catalog/variants.ts` and are re-exported. Search ranking, filters, sort and pagination arrive in S3 (`search`, `suggest`, `applyFilters`, `sortBy`, `paginate`).
 - Search scoring: tokenized case-insensitive match over title, brand, tags, department; weighted (title > brand > tags); ties by featured rank.
 
 ## 5. URL-driven search state
@@ -47,13 +49,13 @@ No other runtime dependencies without an ADR or a written justification in the c
 
 ## 7. Money, time, determinism
 - **Integer cents** everywhere; `lib/pricing` is the only place that computes line totals, savings %, shipping, tax (flat 8%, round half up) and order total. UI formats with one `formatMoney(cents)`.
-- `lib/clock` exposes `now()`; production returns real time, tests set a fixed instant. Delivery ETAs and order dates go through it.
+- `lib/clock` exposes `now()`; production returns real time, and setting `APP_FIXED_NOW` (an ISO timestamp) pins it. The Playwright web server sets it to `2026-10-01T12:00:00Z`, so delivery estimates are exact in tests. Delivery ETAs and order dates go through it (`lib/delivery` adds business days in UTC).
 
 ## 8. Deterministic mock checkout
 Pure `lib/checkout`: `validateAddress`, `validatePayment` (Luhn + test-card table: `4242...` OK, `4000 0000 0000 0002` declined), `deliveryOptions(clock)`, `createOrder(cart, catalog, input)` which recomputes totals from the catalog and returns an order or a typed error. Idempotency: the checkout holds a `submissionId` per attempt; `createOrder` refuses a second order for the same `submissionId` and the button is disabled while pending. Only last-4 and brand are kept; full number and CVC live in component state and are discarded after validation (NFR-SEC-3). No network calls.
 
 ## 9. Assets
-Per [ADR-0004](decisions/0004-asset-strategy.md): about 8-10 licensed photographs for the demo journey (pre-sized WebP in `public/products/`, credited in `public/products/CREDITS.md`), plus a generated `ProductImage` illustration fallback for all other products. No Amazon-hosted assets. Images are static files, so nothing depends on runtime image optimization.
+Per [ADR-0004](decisions/0004-asset-strategy.md): 13 licensed Unsplash photographs (WebP, 1200px, `public/assets/products/`) cover 9 Tier A products; credits are in `public/assets/CREDITS.md` and a unit test enforces that every used file is credited and every file is used. Every other product uses the generated `FallbackIllustration` (department glyph on a variant-tinted gradient), which `ProductImage` also renders when a photo fails to load (FR-ERR-3). No Amazon-hosted assets and no runtime image optimization (`images.unoptimized`).
 
 ## 10. Error handling
 `app/not-found.tsx` (FR-ERR-1), `app/error.tsx` and `app/global-error.tsx` (FR-ERR-2), image `onError` fallback (FR-ERR-3), route-level `loading.tsx` for PDP/results skeletons.
@@ -61,10 +63,10 @@ Per [ADR-0004](decisions/0004-asset-strategy.md): about 8-10 licensed photograph
 ## 11. Repository layout (target)
 ```
 app/            routes (page.tsx, s/, dp/[id]/, cart/, checkout/, orders/, not-found.tsx, error.tsx)
-components/     layout/, search/, pdp/, cart/, checkout/, ui/
-lib/            catalog/, pricing.ts, cart-store.ts, orders.ts, checkout.ts, clock.ts, url.ts
-data/           products.ts
-public/         products/ (+CREDITS.md), fonts/ if any
+components/     layout/, pdp/, ui/  (search/, cart/, checkout/ arrive in later slices)
+lib/            catalog/{types,variants,index}, pricing, quantity, availability, delivery, format, color, clock, purchase, cart-boundary, nav, departments  (cart-store, orders, checkout, url in later slices)
+data/           products/<department>.ts + index.ts, images.ts
+public/         assets/products/*.webp, assets/CREDITS.md
 tests/          unit (colocated *.test.ts) and e2e/ (Playwright)
 docs/           this documentation
 ```

@@ -25,6 +25,13 @@
   --color-footer-deep: #131a22; /* design: lower footer strip */
   --color-footer-link: #dddddd; /* design */
   --color-banner: #eaeded; /* design: mobile info strip */
+  --color-line: #d5d9d9; /* design: borders on white */
+  --color-muted: #565959; /* design: secondary text (7:1 on white) */
+  --color-deal: #cc0c39; /* design: savings percent */
+  --color-stock: #007600; /* design: "In Stock" */
+  --color-star: #de7921; /* design: rating stars */
+  --color-thumb: #e77600; /* design: selected thumbnail / swatch */
+  --color-badge-best: #c45500; /* design: Best Seller badge (white text passes AA) */
   --font-sans: Arial, "Helvetica Neue", Helvetica, sans-serif;
 }
 
@@ -115,6 +122,46 @@
   .header-grid {
     grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
     grid-template-areas: "logo deliver search lang account orders cart";
+  }
+}
+
+/*
+ * Product page grid (FR-PDP-*). DOM order is the mobile reading order (header, gallery, price, options,
+ * buy box, about); the areas rearrange it for wider screens:
+ *  <768   : one column
+ *  768+   : [gallery | header/price/options/buy box], about below
+ *  1280+  : [gallery | header/price/options/about | buy box]
+ */
+.pdp-grid {
+  display: grid;
+  gap: 16px 32px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "header" "gallery" "pricing" "variants" "buybox" "about";
+}
+
+@media (min-width: 48rem) {
+  .pdp-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto;
+    grid-template-areas:
+      "gallery header"
+      "gallery pricing"
+      "gallery variants"
+      "gallery buybox"
+      "about about";
+    align-items: start;
+  }
+}
+
+@media (min-width: 80rem) {
+  .pdp-grid {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) 300px;
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas:
+      "gallery header buybox"
+      "gallery pricing buybox"
+      "gallery variants buybox"
+      "gallery about buybox";
   }
 }
 
