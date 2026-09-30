@@ -245,9 +245,9 @@ dialog.mini-cart::backdrop {
   }
 }
 
-/* The cart page sits on the light gray page background from tablet width up (docs/ux-spec.md). */
+/* The cart, checkout and order pages sit on the light gray page background from tablet width up (docs/ux-spec.md). */
 @media (min-width: 768px) {
-  body:has([data-page="cart"]) {
+  body:has([data-page="cart"], [data-page="checkout"], [data-page="orders"], [data-page="confirmation"]) {
     background: var(--color-page-gray);
   }
 }

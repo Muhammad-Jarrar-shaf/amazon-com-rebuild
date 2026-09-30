@@ -390,13 +390,16 @@ test.describe("mini-cart interaction and keyboard", () => {
 });
 
 test.describe("checkout entry point", () => {
-  test("Proceed to checkout is present with the count, and honestly unavailable until checkout exists", async ({ page }) => {
+  test("Proceed to checkout carries the count and opens /checkout with the cart intact", async ({ page }) => {
     await addFromProductPage(page, KNIFE, { extra: 1 });
     await dialog(page).getByRole("link", { name: "Go to Cart" }).click();
     const proceed = main(page).locator('[data-shell="proceed-to-checkout"]');
     await expect(proceed).toContainText("Proceed to checkout (2 items)");
-    await expect(proceed).toHaveAttribute("aria-disabled", "true");
-    await expect(main(page).getByText("Checkout is not available in this build yet.")).toBeVisible();
+    await expect(proceed).not.toHaveAttribute("aria-disabled", "true");
+    await proceed.click();
+    await expect(page).toHaveURL(/\/checkout\?step=address$/);
+    await expect(page.locator('[data-shell="order-summary"]')).toContainText("Qty 2");
+    await expect(page.locator('[data-shell="summary-subtotal"]')).toHaveText("$99.98");
   });
 });
 

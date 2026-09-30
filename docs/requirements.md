@@ -65,10 +65,10 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 ### Checkout (guest, deterministic mock; see [ADR-0002](decisions/0002-guest-checkout-deterministic-mock.md))
 | ID | Requirement | Origin | Pri | Journeys |
 |---|---|---|---|---|
-| FR-CHK-1 | `/checkout` is a stepper: Address, Delivery, Payment, Review; each step has a URL (`?step=`) and survives reload; visiting with an empty cart redirects to `/cart` | D | MVP | J1 |
+| FR-CHK-1 | `/checkout` is a stepper: Address, Delivery, Payment, Review; each step has a URL (`?step=`) and survives reload and Back/Forward; a step whose earlier steps are incomplete is replaced by the first incomplete one; visiting with an empty cart shows an empty-cart state with links to shop or the cart (no fake checkout) | D | MVP | J1 |
 | FR-CHK-2 | Address fields: full name, street, city, state, ZIP (5 digits or 5+4), phone (10 digits); each field has a visible label and inline error text; Continue is blocked until valid | D | MVP | J1, J5 |
 | FR-CHK-3 | Three delivery options with fixed prices (Standard $0.00, Expedited $9.99, One-day $19.99) and ETAs from the injectable clock; the selected option changes the shipping line and the total immediately | D | MVP | J1 |
-| FR-CHK-4 | Payment is labeled "Test mode": `4242 4242 4242 4242` is accepted; `4000 0000 0000 0002` yields a "Your card was declined" error state; any other number fails format/Luhn validation with an inline error; expiry must be in the future; CVC 3 digits | D | MVP | J1, J5 |
+| FR-CHK-4 | Payment is labeled "Test mode": `4242 4242 4242 4242` is accepted; `4000 0000 0000 0002` yields a "Your card was declined" error state on the payment step (no order can follow); any other number fails format/Luhn validation with an inline error; expiry must be in the future; CVC 3 digits | D | MVP | J1, J5 |
 | FR-CHK-5 | Only the card's last 4 digits and brand label are retained after payment; the full number and CVC are never stored | D | MVP | J1 |
 | FR-CHK-6 | Review shows items, address, delivery choice, payment last-4, and totals (items, shipping, estimated tax, order total) recomputed from the catalog, not from cart-stored prices | D | MVP | J1 |
 | FR-CHK-7 | "Place your order" is disabled while submitting; a double-click or a reload during submit creates exactly one order | D | MVP | J1 |
@@ -77,7 +77,7 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 ### Orders and confirmation
 | ID | Requirement | Origin | Pri | Journeys |
 |---|---|---|---|---|
-| FR-ORD-1 | After Place order: `/orders/<id>/confirmation` shows a success message, order number, items, address, delivery ETA and totals; the cart is emptied and the header count is 0 | D | MVP | J1 |
+| FR-ORD-1 | After Place order: `/orders/<id>/confirmation` shows a success message, order number, items, address, delivery ETA and totals; the cart is emptied and the header count is 0; no card number or CVC is stored (only brand and last four) | D | MVP | J1 |
 | FR-ORD-2 | Order number format `111-NNNNNNN-NNNNNNN`, derived deterministically from a per-browser order sequence | D | MVP | J1 |
 | FR-ORD-3 | `/orders` lists orders newest first (order number, date, total, items); with none, it shows an empty state | D | MVP | J1 |
 

@@ -53,3 +53,26 @@ export function lineTotalCents(unitPriceCents: Cents, quantity: number): Cents {
   assertCents(total, "line total");
   return total;
 }
+
+/** Rate of the mock estimated tax (docs/requirements.md FR-CHK-8): a flat 8% of the items subtotal. */
+export const TAX_RATE_PERCENT = 8;
+
+/** Estimated tax on an items subtotal: 8%, rounded half up to the cent, in integer math. */
+export function taxCents(subtotalCents: Cents): Cents {
+  assertCents(subtotalCents, "subtotal");
+  return Math.floor((subtotalCents * TAX_RATE_PERCENT + 50) / 100);
+}
+
+export interface OrderTotals {
+  subtotalCents: Cents;
+  shippingCents: Cents;
+  taxCents: Cents;
+  totalCents: Cents;
+}
+
+/** The order total: items subtotal + delivery charge + estimated tax. The only place these are combined. */
+export function orderTotals(subtotalCents: Cents, shippingCents: Cents): OrderTotals {
+  assertCents(shippingCents, "shipping");
+  const tax = taxCents(subtotalCents);
+  return { subtotalCents, shippingCents, taxCents: tax, totalCents: subtotalCents + shippingCents + tax };
+}

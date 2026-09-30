@@ -201,7 +201,9 @@ test.describe("menu drawer (both widths)", () => {
     // Departments are real links now that /s exists (S3); destinations that are still unbuilt stay inert.
     await expect(dialog.getByRole("link", { name: /Electronics/ })).toHaveAttribute("href", "/s?dept=electronics");
     await expect(dialog.getByRole("link", { name: /Electronics/ })).not.toHaveAttribute("aria-disabled", "true");
-    await expect(dialog.getByRole("link", { name: /Your Orders/ })).toHaveAttribute("aria-disabled", "true");
+    await expect(dialog.getByRole("link", { name: /Your Orders/ })).toHaveAttribute("href", "/orders");
+    // Still unbuilt: the account page stays inert.
+    await expect(dialog.getByRole("link", { name: /Your Account/ })).toHaveAttribute("aria-disabled", "true");
 
     // Focus may leave the dialog only for the browser's own UI (activeElement is then <body>); it must never reach the
     // page behind the modal, and it wraps back into the dialog. Verified separately by logging each Tab.

@@ -25,6 +25,8 @@ export interface CartActions {
   undo(lookup: CartLookup): void;
   dismissNotice(): void;
   clearRemoved(): void;
+  /** Empties the cart (after an order is placed). */
+  clear(): void;
   openMiniCart(): void;
   closeMiniCart(): void;
 }
@@ -79,6 +81,7 @@ export function createCartStore(): StoreApi<CartStore> {
 
     dismissNotice: () => set({ notice: null }),
     clearRemoved: () => set({ lastRemoved: null }),
+    clear: () => set({ lines: [], lastRemoved: null, lastAdded: null, miniCartOpen: false }),
     openMiniCart: () => set({ miniCartOpen: true, lastAdded: null }),
     closeMiniCart: () => set({ miniCartOpen: false, lastAdded: null, lastRemoved: null }),
   }));

@@ -28,7 +28,9 @@ describe("isAvailable", () => {
     expect(isAvailable("/?ref=x")).toBe(true);
     expect(isAvailable("/#main")).toBe(true);
     expect(isAvailable("/cart")).toBe(true);
-    expect(isAvailable("/checkout")).toBe(false);
+    expect(isAvailable("/checkout")).toBe(true);
+    expect(isAvailable("/orders")).toBe(true);
+    expect(isAvailable("/account")).toBe(false);
     expect(isAvailable("/s?dept=books")).toBe(true);
     expect(isAvailable("/s?k=headphones&sort=rating")).toBe(true);
     expect(isAvailable("/sx")).toBe(false);
