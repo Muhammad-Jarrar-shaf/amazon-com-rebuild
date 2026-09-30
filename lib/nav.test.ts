@@ -28,7 +28,9 @@ describe("isAvailable", () => {
     expect(isAvailable("/?ref=x")).toBe(true);
     expect(isAvailable("/#main")).toBe(true);
     expect(isAvailable("/cart")).toBe(false);
-    expect(isAvailable("/s?dept=books")).toBe(false);
+    expect(isAvailable("/s?dept=books")).toBe(true);
+    expect(isAvailable("/s?k=headphones&sort=rating")).toBe(true);
+    expect(isAvailable("/sx")).toBe(false);
   });
 
   it("supports the dynamic product route via a prefix pattern, but not the bare prefix", () => {

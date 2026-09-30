@@ -201,7 +201,7 @@ export const ELECTRONICS: Product[] = [
         stock: 27,
       },
     ],
-    rating: 4.3,
+    rating: 3.8,
     ratingCount: 3096,
     boughtPastMonth: 400,
     shipping: { costCents: 0, businessDays: 4 },

@@ -231,7 +231,7 @@ export const HOME_KITCHEN: Product[] = [
     variants: [
       { id: "white", label: "White", swatch: "#eeeeee", priceCents: 3499, listPriceCents: 4999, images: [illustration("Pinecrest personal blender in White")], stock: 61 },
     ],
-    rating: 4.3,
+    rating: 3.7,
     ratingCount: 9276,
     boughtPastMonth: 1700,
     shipping: { costCents: 0, businessDays: 3 },

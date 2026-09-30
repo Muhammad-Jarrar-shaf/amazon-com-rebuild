@@ -46,7 +46,7 @@ test.describe("desktop shell", () => {
     const height = async (selector: string) => Math.round((await page.locator(selector).boundingBox())!.height);
     expect(await height('[data-shell="topbar"]')).toBe(60);
     expect(await height('[data-shell="subnav"]')).toBe(39);
-    const searchBox = await page.getByRole("searchbox", { name: "Search Amazon Rebuild" }).locator("..").boundingBox();
+    const searchBox = await page.getByRole("combobox", { name: "Search Amazon Rebuild" }).locator("..").boundingBox();
     expect(Math.round(searchBox!.height)).toBe(38);
 
     await expect(page.getByRole("link", { name: "Amazon Rebuild, home" }).first()).toBeVisible();
@@ -160,7 +160,7 @@ test.describe("mobile shell", () => {
     await expectMinTapTarget(page.getByRole("button", { name: "Open menu" }), "menu button");
     await expectMinTapTarget(page.getByRole("button", { name: "Search", exact: true }), "search button");
     await expectMinTapTarget(page.getByRole("button", { name: "Dismiss banner" }), "dismiss banner");
-    const searchField = (await page.getByRole("searchbox", { name: "Search Amazon Rebuild" }).boundingBox())!;
+    const searchField = (await page.getByRole("combobox", { name: "Search Amazon Rebuild" }).boundingBox())!;
     expect(searchField.height).toBeGreaterThanOrEqual(44);
     await page.getByRole("link", { name: "Back to top" }).scrollIntoViewIfNeeded();
     const backToTop = (await page.getByRole("link", { name: "Back to top" }).boundingBox())!;
@@ -198,10 +198,25 @@ test.describe("menu drawer (both widths)", () => {
     await expect(close).toBeFocused();
     await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
     await expect(dialog.getByRole("heading", { name: "Shop by Department" })).toBeVisible();
-    await expect(dialog.getByRole("link", { name: /Electronics/ })).toHaveAttribute("aria-disabled", "true");
+    // Departments are real links now that /s exists (S3); destinations that are still unbuilt stay inert.
+    await expect(dialog.getByRole("link", { name: /Electronics/ })).toHaveAttribute("href", "/s?dept=electronics");
+    await expect(dialog.getByRole("link", { name: /Electronics/ })).not.toHaveAttribute("aria-disabled", "true");
+    await expect(dialog.getByRole("link", { name: /Your Orders/ })).toHaveAttribute("aria-disabled", "true");
 
-    for (let i = 0; i < 8; i++) await page.keyboard.press("Tab");
-    expect(await page.evaluate(() => !!document.activeElement?.closest("dialog"))).toBe(true);
+    // Focus may leave the dialog only for the browser's own UI (activeElement is then <body>); it must never reach the
+    // page behind the modal, and it wraps back into the dialog. Verified separately by logging each Tab.
+    let wrapped = false;
+    for (let i = 0; i < 16; i++) {
+      await page.keyboard.press("Tab");
+      const where = await page.evaluate(() => {
+        const element = document.activeElement;
+        if (!element || element === document.body) return "browser-ui";
+        return element.closest("dialog") ? "dialog" : "page-behind";
+      });
+      expect(where, `focus after Tab ${i + 1}`).not.toBe("page-behind");
+      if (i > 0 && where === "dialog") wrapped = true;
+    }
+    expect(wrapped).toBe(true);
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();

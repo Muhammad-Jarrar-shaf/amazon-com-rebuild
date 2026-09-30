@@ -8,6 +8,7 @@ import { NavDrawer } from "@/components/layout/nav-drawer";
 import { SearchBar } from "@/components/layout/search-bar";
 import { MobileChipNav, SecondaryNav } from "@/components/layout/secondary-nav";
 import { PAGE_TOP_ID } from "@/lib/nav";
+import { getSuggestionTerms } from "@/lib/search/server";
 
 /**
  * Site header (FR-NAV-1..4). One DOM for every width: the top bar is a CSS grid whose areas change per
@@ -26,7 +27,7 @@ export function Header() {
           </MenuButton>
           <Logo className="[grid-area:logo]" />
           <DeliveryLocation className="hidden [grid-area:deliver] xl:flex" />
-          <SearchBar className="[grid-area:search]" />
+          <SearchBar terms={getSuggestionTerms()} className="[grid-area:search]" />
           <LocaleEntry className="hidden [grid-area:lang] xl:flex" />
           <AccountEntry className="[grid-area:account]" />
           <OrdersEntry className="[grid-area:orders]" />

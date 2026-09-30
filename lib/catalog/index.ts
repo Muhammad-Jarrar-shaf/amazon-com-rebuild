@@ -1,12 +1,14 @@
 import { PRODUCTS } from "@/data/products";
 import { departmentHref, getDepartment, type DepartmentSlug } from "@/lib/departments";
 import type { Product, SearchRecord } from "./types";
+import { normalizeSearchText } from "@/lib/search/text";
 import { getDefaultVariant } from "./variants";
 
 export { getDefaultVariant, getVariant, getVariantAvailability, isPurchasable } from "./variants";
+export { normalizeSearchText } from "@/lib/search/text";
 
-// Pure, deterministic catalog access (server-side: it imports the seed data). Search ranking, filtering and
-// pagination belong to S3; getSearchIndex below is the data shape that slice will consume.
+// Pure, deterministic catalog access (server-side: it imports the seed data). Search ranking, filtering, sorting and
+// pagination live in lib/search; getSearchIndex below is a flat record view of the catalog.
 
 const BY_ID: ReadonlyMap<string, Product> = new Map(PRODUCTS.map((product) => [product.id, product]));
 
@@ -55,17 +57,6 @@ export function getBreadcrumb(product: Product): { label: string; href: string }
 export function getDisplayPrice(product: Product): { priceCents: number; listPriceCents?: number } {
   const variant = getDefaultVariant(product);
   return { priceCents: variant.priceCents, listPriceCents: variant.listPriceCents };
-}
-
-/** Lower-cases, strips accents and punctuation, and collapses whitespace. */
-export function normalizeSearchText(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 export function toSearchRecord(product: Product): SearchRecord {

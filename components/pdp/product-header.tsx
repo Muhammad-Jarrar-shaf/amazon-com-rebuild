@@ -2,6 +2,7 @@ import { StarRating } from "@/components/pdp/star-rating";
 import { NavLink } from "@/components/ui/nav-link";
 import { BADGE_LABELS, type BadgeKind, type Product } from "@/lib/catalog/types";
 import { boughtBucket } from "@/lib/format";
+import { buildSearchUrl } from "@/lib/search/url";
 
 const BADGE_STYLES: Record<BadgeKind, string> = {
   "top-pick": "bg-nav text-white",
@@ -14,7 +15,7 @@ export function ProductHeader({ product, className = "" }: { product: Product; c
   const bucket = boughtBucket(product.boughtPastMonth);
   return (
     <header className={className}>
-      <NavLink href={`/s?k=${encodeURIComponent(product.brand)}`} className="text-sm text-link [a&]:hover:text-price-sale [a&]:hover:underline">
+      <NavLink href={buildSearchUrl({ query: product.brand })} className="text-sm text-link [a&]:hover:text-price-sale [a&]:hover:underline">
         {product.byline}
       </NavLink>
       <h1 className="mt-1 text-[22px] leading-snug font-medium text-ink md:text-2xl">{product.title}</h1>

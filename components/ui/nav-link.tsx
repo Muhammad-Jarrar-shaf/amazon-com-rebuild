@@ -12,7 +12,7 @@ type NavLinkProps = Omit<ComponentPropsWithoutRef<"a">, "href"> & { href: string
 export function NavLink({ href, className = "", children, ...rest }: NavLinkProps) {
   if (isAvailable(href)) {
     return (
-      <Link href={href} className={className} {...rest}>
+      <Link href={href} prefetch={href.startsWith("/s") ? false : undefined} className={className} {...rest}>
         {children}
       </Link>
     );

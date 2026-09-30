@@ -83,7 +83,7 @@ export const BEAUTY: Product[] = [
     variants: [
       { id: "sheer", label: "Sheer", swatch: "#f4e3d3", priceCents: 2199, listPriceCents: 2899, images: [illustration("Lumen Botanics SPF 30 moisturizer")], stock: 73 },
     ],
-    rating: 4.4,
+    rating: 3.9,
     ratingCount: 9825,
     boughtPastMonth: 2800,
     shipping: { costCents: 0, businessDays: 2 },
@@ -117,7 +117,7 @@ export const BEAUTY: Product[] = [
       { id: "blush", label: "Blush", swatch: "#f0b8c0", priceCents: 2999, listPriceCents: 4499, images: [illustration("Dewlight sonic cleansing brush in Blush")], stock: 25 },
       { id: "sage", label: "Sage", swatch: "#a6c4a2", priceCents: 2999, listPriceCents: 4499, images: [illustration("Dewlight sonic cleansing brush in Sage")], stock: 17 },
     ],
-    rating: 4.3,
+    rating: 3.6,
     ratingCount: 5407,
     boughtPastMonth: 800,
     shipping: { costCents: 0, businessDays: 3 },

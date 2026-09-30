@@ -176,7 +176,7 @@ export const COMPUTERS: Product[] = [
     variants: [
       { id: "space-gray", label: "Space Gray", swatch: "#6b7280", priceCents: 6499, listPriceCents: 7999, images: [illustration("Orbit Hub 9-in-1 USB-C dock")], stock: 47 },
     ],
-    rating: 4.3,
+    rating: 3.9,
     ratingCount: 4207,
     boughtPastMonth: 800,
     shipping: { costCents: 0, businessDays: 3 },

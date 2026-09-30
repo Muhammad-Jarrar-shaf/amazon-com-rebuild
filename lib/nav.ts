@@ -9,9 +9,9 @@ export const PAGE_TOP_ID = "site-top";
 /**
  * Routes that exist in the app. Shell links to any other path render as intentionally
  * unavailable (see NavLink) instead of leading to a 404. Add a route here in the same
- * commit as the slice that implements it: S3 adds "/s", S4 "/cart", S5 "/orders".
+ * commit as the slice that implements it: S4 adds "/cart", S5 "/orders".
  */
-export const AVAILABLE_ROUTES: readonly string[] = ["/", "/dp/*"];
+export const AVAILABLE_ROUTES: readonly string[] = ["/", "/s", "/dp/*"];
 
 /** Exact match, or a prefix match for routes ending in "/*" (a dynamic segment: "/dp/*" covers "/dp/<id>"). */
 export function isAvailable(href: string): boolean {

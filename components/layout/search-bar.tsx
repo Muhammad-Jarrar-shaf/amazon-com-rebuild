@@ -1,24 +1,109 @@
 "use client";
 
-import { useId, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
 import { CaretDownIcon, SearchIcon } from "@/components/icons";
 import { ALL_DEPARTMENTS_LABEL, DEPARTMENTS } from "@/lib/departments";
+import { splitSuggestion, suggest, type SuggestionTerm } from "@/lib/search/suggest";
+import { buildSearchUrl, cleanQuery, isDepartmentSlug } from "@/lib/search/url";
 import { SITE } from "@/lib/site";
 
+/** Keeps the field in step with the URL on the results page (back/forward, filter changes). Renders nothing. */
+function SyncWithUrl({ onSync }: { onSync: (query: string, dept: string) => void }) {
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const query = params.get("k") ?? params.get("q") ?? "";
+  const dept = params.get("dept") ?? "";
+  useEffect(() => {
+    if (pathname === "/s") onSync(query, dept);
+  }, [pathname, query, dept, onSync]);
+  return null;
+}
+
+interface SearchBarProps {
+  className?: string;
+  /** Suggestion terms derived from the catalog on the server (popular queries, categories, brands, tags). */
+  terms: readonly SuggestionTerm[];
+}
+
 /**
- * Header search: a real GET form to /s (department + keyword). The results page, suggestions and
- * search logic belong to S3 (FR-SRCH-*), so until then submitting has no destination.
- * The department picker is a native <select> laid over a short visible label ("All"), as observed on
- * amazon.com; it is hidden on mobile, where the search is a single full-width field.
+ * Header search (FR-SRCH-1, FR-SRCH-2). A real GET form to /s that also works without JavaScript; with JavaScript
+ * it navigates client-side and shows local suggestions as a combobox: Up/Down move through them, Enter searches the
+ * highlighted one (or what was typed), Escape closes, and leaving the field closes. No request is made for suggestions.
+ * The department picker is a native <select> laid over a short visible label, hidden on mobile.
  */
-export function SearchBar({ className = "" }: { className?: string }) {
+export function SearchBar({ className = "", terms }: SearchBarProps) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
   const [dept, setDept] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
   const deptId = useId();
-  const shortLabel = DEPARTMENTS.find((d) => d.slug === dept)?.label ?? "All";
+  const listboxId = useId();
+  const optionId = (index: number) => `${listboxId}-option-${index}`;
+
+  const suggestions = useMemo(() => suggest(terms, query), [terms, query]);
+  const expanded = open && suggestions.length > 0;
+  const shortLabel = DEPARTMENTS.find((department) => department.slug === dept)?.label ?? "All";
+
+  const close = () => {
+    setOpen(false);
+    setActive(-1);
+  };
+
+  // Must be stable: SyncWithUrl re-runs its effect when this changes, which would overwrite what is being typed.
+  const syncWithUrl = useCallback((urlQuery: string, urlDept: string) => {
+    setQuery(urlQuery);
+    setDept(isDepartmentSlug(urlDept) ? urlDept : "");
+    setOpen(false);
+    setActive(-1);
+  }, []);
+
+  const search = (text: string) => {
+    const cleaned = cleanQuery(text);
+    setQuery(cleaned);
+    close();
+    router.push(buildSearchUrl({ query: cleaned, dept: isDepartmentSlug(dept) ? dept : undefined }));
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      if (suggestions.length === 0) return;
+      event.preventDefault();
+      if (!expanded) {
+        setOpen(true);
+        setActive(event.key === "ArrowDown" ? 0 : suggestions.length - 1);
+        return;
+      }
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActive((current) => (current + step + suggestions.length) % suggestions.length);
+    } else if (event.key === "Escape" && expanded) {
+      event.preventDefault();
+      close();
+    }
+  };
 
   return (
-    <form role="search" action="/s" method="get" className={`w-full py-2 md:py-0 ${className}`}>
-      <div className="flex h-[var(--tap)] w-full rounded-md bg-white focus-within:ring-[3px] focus-within:ring-search-focus md:h-[var(--search-h)]">
+    <form
+      role="search"
+      action="/s"
+      method="get"
+      className={`w-full py-2 md:py-0 ${className}`}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const chosen = expanded && active >= 0 ? suggestions[active] : undefined;
+        search(chosen ? chosen.text : query);
+      }}
+    >
+      <Suspense fallback={null}>
+        <SyncWithUrl onSync={syncWithUrl} />
+      </Suspense>
+      <div
+        className="relative flex h-[var(--tap)] w-full rounded-md bg-white focus-within:ring-[3px] focus-within:ring-search-focus md:h-[var(--search-h)]"
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) close();
+        }}
+      >
         <div className="relative hidden shrink-0 items-center rounded-l-md bg-search-select text-xs text-[#555] hover:bg-[#d5d5d5] has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-[-2px] has-[:focus-visible]:outline-search-focus md:flex">
           <span aria-hidden="true" className="pointer-events-none flex max-w-40 items-center gap-0.5 pr-1 pl-3">
             <span className="truncate">{shortLabel}</span>
@@ -45,10 +130,23 @@ export function SearchBar({ className = "" }: { className?: string }) {
         <input
           type="search"
           name="k"
+          role="combobox"
           aria-label={`Search ${SITE.name}`}
+          aria-autocomplete="list"
+          aria-expanded={expanded}
+          aria-controls={listboxId}
+          aria-activedescendant={expanded && active >= 0 ? optionId(active) : undefined}
           placeholder={`Search ${SITE.name}`}
           autoComplete="off"
           enterKeyHint="search"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+            setActive(-1);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
           className="h-full min-w-0 flex-1 rounded-l-md bg-white px-3 text-[15px] text-ink placeholder:text-[#767676] focus:outline-none md:rounded-none"
         />
         <button
@@ -58,6 +156,39 @@ export function SearchBar({ className = "" }: { className?: string }) {
         >
           <SearchIcon className="size-[22px]" />
         </button>
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label="Search suggestions"
+          hidden={!expanded}
+          className="absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-md border border-line bg-white py-1 text-ink shadow-lg"
+        >
+          {suggestions.map((suggestion, index) => {
+            const { typed, completion } = splitSuggestion(suggestion.text, query);
+            return (
+              <li
+                key={`${suggestion.kind}-${suggestion.text}`}
+                id={optionId(index)}
+                role="option"
+                aria-selected={index === active}
+                // Keep focus in the field while pressing an option, so the field's blur does not close the list first.
+                onMouseDown={(event) => event.preventDefault()}
+                onMouseEnter={() => setActive(index)}
+                onClick={() => search(suggestion.text)}
+                className={`flex min-h-[var(--tap)] cursor-pointer items-center gap-3 px-3 text-[15px] md:min-h-10 ${index === active ? "bg-page-gray" : ""}`}
+              >
+                <SearchIcon className="size-4 shrink-0 text-muted" />
+                <span className="min-w-0 truncate">
+                  {typed}
+                  <strong>{completion}</strong>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+      <div role="status" className="sr-only">
+        {expanded ? `${suggestions.length} suggestion${suggestions.length === 1 ? "" : "s"} available` : ""}
       </div>
     </form>
   );

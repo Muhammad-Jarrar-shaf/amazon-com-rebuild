@@ -36,11 +36,33 @@ No other runtime dependencies without an ADR or a written justification in the c
 
 ## 4. Data
 - `data/products/<department>.ts` (six files, aggregated by `data/products/index.ts`): typed `Product` records (id, title, brand, byline, department, category, description, bullets, specs, variants, rating, ratingCount, boughtPastMonth, badge, shipping, seller, relatedIds, tags, featuredRank). Each variant carries its own price, compare-at price, images, stock and shipping restriction; availability is derived from stock and the restriction (`lib/availability`), never stored. 30 products across 6 departments; the headphone family is the fully populated hero (3 colors, a 3-image gallery, distinct prices, one unavailable variant). `data/images.ts` builds `ImageRef`s (a local photo path, or `null` for the generated illustration). Seed integrity is enforced by `lib/catalog/data.test.ts`.
-- `lib/catalog` (server-side; imports the seed data): `getAllProducts`, `getProductById`, `getProductsByDepartment`, `getRelatedProducts`, `getFeaturedProducts` (rank order, stable), `getBreadcrumb`, `getDisplayPrice`, and the S3-ready `getSearchIndex`/`toSearchRecord`/`normalizeSearchText`. Variant helpers live in the data-free `lib/catalog/variants.ts` and are re-exported. Search ranking, filters, sort and pagination arrive in S3 (`search`, `suggest`, `applyFilters`, `sortBy`, `paginate`).
-- Search scoring: tokenized case-insensitive match over title, brand, tags, department; weighted (title > brand > tags); ties by featured rank.
+- `lib/catalog` (server-side; imports the seed data): `getAllProducts`, `getProductById`, `getProductsByDepartment`, `getRelatedProducts`, `getFeaturedProducts` (rank order, stable), `getBreadcrumb`, `getDisplayPrice`, and the S3-ready `getSearchIndex`/`toSearchRecord`/`normalizeSearchText`. Variant helpers live in the data-free `lib/catalog/variants.ts` and are re-exported. Search lives in `lib/search` (section 5).
+- Search modules (`lib/search/`): `text` (normalize, tokenize, stem), `types` (SearchState, sort keys, price ranges), `url` (parse/build/update helpers), `engine` (score, filter, facets, sort, paginate, `runSearch`), `suggest` (client-safe autocomplete), `summary` (count line, price labels) and `server` (the only module that imports the catalog: `searchCatalog`, `getSuggestionTerms`, `POPULAR_QUERIES`).
 
-## 5. URL-driven search state
-`/s?k=<q>&dept=<d>&brand=<b1,b2>&rating=4&min=<cents>&max=<cents>&sort=<key>&page=<n>` is the single source of truth. A pure `parseSearchParams`/`buildSearchUrl` pair (unit-tested round-trip) is shared by server pages and client controls. Changing a control pushes a new URL; results are re-rendered on the server. PDP variant is `?variant=<id>`; checkout step is `?step=`.
+## 5. Search: URL contract, ranking, refinements (S3)
+**The URL is the only search state.** `parseSearchParams` (`lib/search/url.ts`) turns it into a `SearchState`; nothing is mirrored in React state. `buildSearchUrl` is the inverse (stable parameter order, defaults omitted); a round-trip test covers it. Parsing never throws: malformed values fall back to the default for that parameter.
+
+| Param | Meaning | Notes |
+|---|---|---|
+| `k` | free-text query | `q` is accepted as an alias when reading; control characters and whitespace are cleaned, capped at 100 characters |
+| `dept` | department slug | unknown slugs are ignored |
+| `brand` | brand name, **repeated** (`brand=A&brand=B`) | OR within the facet; deduplicated, at most 12 |
+| `rating` | `4` | the only rating filter ("4 Stars & Up"); other values ignored |
+| `min`, `max` | price bounds in **whole dollars** | `min` inclusive; `max` keeps prices up to `max.99` (`max=49` keeps $49.99); inverted bounds are swapped; compared against each product's default-variant price, in integer cents |
+| `sort` | `price-asc` \| `price-desc` \| `rating` | `featured` is the default and is omitted |
+| `page` | 1-based | omitted for page 1; invalid values mean 1; a page past the end **redirects (307) to the last page** |
+
+`/s` needs a query, a department or a filter to show results; with none it shows search guidance (not an error). Category browsing is `dept=` on the same route (`/s?dept=books`): the header picker, the menu, the footer and the breadcrumb all use it. A product's byline links to `/s?k=<brand>`.
+
+**Ranking** (`lib/search/engine.ts`, pure and deterministic): the query is normalized and split into words; every word must match (AND). A word's score is its best field: exact word = full weight, word prefix = 60%, with weights title 100, brand 80, category 60, tag 40, department 20 (light plural stemming, so "headphones" finds "headphone"). A phrase found in the title adds 300 and a title that starts with the query adds 100. Ties break by featured rank, then rating, review count and id, so the order never depends on input order. An empty query returns the department (or everything) in that default order. There is no search backend.
+
+**Pipeline** (`runSearch`): search and department -> brand/rating/price filters -> sort (`featured` keeps relevance order; price and rating sorts are stable) -> paginate (16 per page, page clamped). Refinement counts are computed without the facet's own selection, so choosing a brand never hides the other brands.
+
+**Suggestions** (`lib/search/suggest.ts`): computed in the browser from a small term list (popular queries, categories, brands, tags: about 4 KB) that the server derives from the catalog and passes to the search bar as a prop, so no request is made while typing and the client never imports the catalog. At least 2 characters, at most 8 results: terms that start with the input first, then terms where every typed word starts a word; popular queries outrank categories, brands and tags; ranking happens before de-duplication so the result never depends on the term order.
+
+**Client behavior:** the header search bar and the refinements are client components that navigate with `router.push`. Controls that navigate are **optimistic** (`useOptimistic` in a transition) so a checkbox or the sort select responds at once, and links inside the refinements are built from that same optimistic state so a pending selection is never dropped. **Links to `/s` are not prefetched**: prefetched head data was reused across different search URLs on client navigation and showed the wrong tab title.
+
+The product variant is `?variant=<id>` (PDP) and the checkout step `?step=` (S5).
 
 ## 6. Cart and orders
 - Zustand store `useCart`: lines `{productId, variantId, qty}` only (no prices stored; prices always resolved from the catalog). Actions: `add`, `setQty`, `remove` (keeps a one-slot `lastRemoved` for Undo), `clear`. Persist middleware -> `localStorage` key `cart:v1`, with a version field and safe parse (corrupt/unknown data is discarded, never crashes).
@@ -63,8 +85,8 @@ Per [ADR-0004](decisions/0004-asset-strategy.md): 13 licensed Unsplash photograp
 ## 11. Repository layout (target)
 ```
 app/            routes (page.tsx, s/, dp/[id]/, cart/, checkout/, orders/, not-found.tsx, error.tsx)
-components/     layout/, pdp/, ui/  (search/, cart/, checkout/ arrive in later slices)
-lib/            catalog/{types,variants,index}, pricing, quantity, availability, delivery, format, color, clock, purchase, cart-boundary, nav, departments  (cart-store, orders, checkout, url in later slices)
+components/     layout/, pdp/, search/, ui/  (cart/, checkout/ arrive in later slices)
+lib/            catalog/{types,variants,index}, search/{text,types,url,engine,suggest,summary,server}, pricing, quantity, availability, delivery, format, color, clock, purchase, cart-boundary, nav, departments  (cart-store, orders, checkout, url in later slices)
 data/           products/<department>.ts + index.ts, images.ts
 public/         assets/products/*.webp, assets/CREDITS.md
 tests/          unit (colocated *.test.ts) and e2e/ (Playwright)

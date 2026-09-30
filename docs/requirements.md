@@ -26,14 +26,14 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 | ID | Requirement | Origin | Pri | Journeys |
 |---|---|---|---|---|
 | FR-SRCH-1 | Submitting the header search (Enter or button) navigates to `/s?k=<query>` | O | MVP | J1 |
-| FR-SRCH-2 | After >=2 typed characters, up to 8 local suggestions appear; Up/Down moves, Enter selects, Esc closes; suggestions come from product titles and a short popular-queries list | O/D | MVP | J1 |
+| FR-SRCH-2 | After >=2 typed characters, up to 8 local suggestions appear (a `combobox` with a `listbox`; the typed part is normal and the completion bold); Up/Down move the active option, Enter searches it (or the typed text), Esc closes, clicking a suggestion searches it, and leaving the field closes the list. Suggestions come from popular queries, categories, brands and tags derived from the catalog; no request is made while typing | O/D | MVP | J1 |
 | FR-SRCH-3 | Each result is a list row with image, title, rating + count, price (dollars + superscript cents), was-price when discounted, delivery estimate, and an Add to cart or "See options" button (See options when the product has >1 variant) | O | MVP | J1 |
 | FR-SRCH-4 | Sort: Featured, Price low to high, Price high to low, Avg. review; the choice is in the URL (`sort=`) | O/D | MVP | J1, J2 |
-| FR-SRCH-5 | Filters: Brand (multi-select), Rating (4 stars & up), Price range; filters combine with AND; each is in the URL; a "Clear filters" control resets them | O/D | MVP | J2 |
-| FR-SRCH-6 | 16 results per page with numbered pagination (Previous, page numbers, Next); the page is in the URL (`page=`); the result count line reads "1-16 of N results for <query>" | O | MVP | J2 |
+| FR-SRCH-5 | Filters: Brand (multi-select), Rating (4 stars & up), Price (ready-made ranges plus a custom min/max in whole dollars; `max` keeps prices up to `max.99`); filters combine with AND; each is in the URL; each is removable as a chip and "Clear filters" resets them; every filter genuinely changes results on the seed catalog | O/D | MVP | J2 |
+| FR-SRCH-6 | 16 results per page with numbered pagination (Previous, page numbers, Next; current page marked); the page is in the URL (`page=`); the result count line reads "1-16 of N results for <query>"; a page past the end redirects to the last page and an invalid page means page 1 | O | MVP | J2 |
 | FR-SRCH-7 | Zero results shows an explanatory empty state, the query, a Clear filters action when filters are active, and a link to browse departments | D | MVP | J5 |
 | FR-SRCH-8 | The department dropdown scopes the search (`dept=`); Home category tiles and sub-nav use the same results view | O | MVP | J2 |
-| FR-SRCH-9 | Reloading or sharing any results URL restores the same query, filters, sort and page | D | MVP | J2 |
+| FR-SRCH-9 | Reloading, sharing or navigating Back/Forward to any results URL restores the same query, filters, sort and page; the parameter contract (`k`, `dept`, `brand`, `rating`, `min`, `max`, `sort`, `page`) is documented in [architecture.md](architecture.md#5-search-url-contract-ranking-refinements-s3), and malformed values never crash the page | D | MVP | J2 |
 
 ### Product detail
 | ID | Requirement | Origin | Pri | Journeys |
