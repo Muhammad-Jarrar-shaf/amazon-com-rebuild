@@ -1,10 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
+import { FIXED_NOW } from "./tests/e2e/fixture-clock";
 
 // Local runs build and serve the production bundle. Set E2E_BASE_URL to run the same tests
 // against a deployed site instead (production smoke).
 const externalBaseUrl = process.env.E2E_BASE_URL;
 const PORT = 3100;
-const FIXED_NOW = "2026-10-01T12:00:00Z";
 
 export default defineConfig({
   testDir: "./tests/e2e",

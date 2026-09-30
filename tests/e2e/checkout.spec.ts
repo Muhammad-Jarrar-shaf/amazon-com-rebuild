@@ -3,9 +3,11 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { CART_STORAGE_KEY } from "@/lib/cart/persistence";
 import { CHECKOUT_STORAGE_KEY } from "@/lib/checkout/persistence";
 import { ORDERS_STORAGE_KEY } from "@/lib/orders/persistence";
+import { FIXED_NOW, PINNED_CLOCK } from "./fixture-clock";
 
 // Guest checkout, order creation, confirmation and orders (FR-CHK-*, FR-ORD-*, J1, J4, J5). Runs in the desktop (1440)
-// and mobile (375) projects against the production build. The clock is pinned to Thursday 2026-10-01.
+// and mobile (375) projects against the production build. Locally the clock is pinned to Thursday 2026-10-01; against a
+// deployment (E2E_BASE_URL) the app uses the real clock, so delivery dates are checked against their contract.
 
 const KNIFE = "B0HRTH0KNF";
 const HERO = "B0HALO0AUR";
@@ -73,22 +75,78 @@ async function fillCard(page: Page, number = APPROVED, overrides: { expiry?: str
   await page.getByLabel("Security code (CVC)").fill(overrides.cvc ?? "123");
 }
 
+type Speed = "standard" | "expedited" | "one-day";
+const SPEEDS: readonly Speed[] = ["one-day", "expedited", "standard"];
+const OPTION_NAME: Record<Speed, string> = { standard: "Standard", expedited: "Expedited", "one-day": "One-day" };
+// The documented delivery promise (FR-CHK-3, docs/ux-spec.md): business days after the order day.
+const BUSINESS_DAYS: Record<Speed, number> = { standard: 5, expedited: 2, "one-day": 1 };
+// Exact dates under the fixture clock (Thursday October 1): the local run pins them.
+const FIXTURE_ARRIVAL: Record<Speed, string> = { "one-day": "Friday, October 2", expedited: "Monday, October 5", standard: "Thursday, October 8" };
+const DAY = 86_400_000;
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+/** "Friday, October 2" as a UTC date, in the year that puts it nearest to `today` (dates cross New Year). */
+function parseArrival(shown: string, today: number): { date: number; weekday: string } {
+  const match = /^(\w+), (\w+) (\d{1,2})$/.exec(shown);
+  expect(match, `"${shown}" reads like "Friday, October 2"`).not.toBeNull();
+  const [, weekday, month, day] = match!;
+  const monthIndex = MONTHS.indexOf(month!);
+  expect(monthIndex, `"${month}" is a month`).toBeGreaterThanOrEqual(0);
+  const year = new Date(today).getUTCFullYear();
+  const date = [year - 1, year, year + 1].map((y) => Date.UTC(y, monthIndex, Number(day))).reduce((best, next) => (Math.abs(next - today) < Math.abs(best - today) ? next : best));
+  return { date, weekday: weekday! };
+}
+
+/**
+ * Reads the three arrival dates on the Delivery step and checks the delivery contract without re-deriving the app's
+ * calculation: each is a real weekday date whose name matches the calendar, it falls within the window that N business
+ * days allows (N to N+2 calendar days, one day of slack for a run crossing midnight UTC), and faster options arrive
+ * sooner. Under the local fixture clock the dates must also be exactly the fixture values.
+ */
+async function deliveryArrivals(page: Page): Promise<Record<Speed, string>> {
+  const today = PINNED_CLOCK ? Date.parse(FIXED_NOW) : Date.now();
+  const startOfToday = today - (today % DAY);
+  const arrivals = {} as Record<Speed, string>;
+  const dates: number[] = [];
+  for (const speed of SPEEDS) {
+    const text = await page.locator('[data-shell="delivery-option"]').filter({ hasText: OPTION_NAME[speed] }).innerText();
+    const shown = /Arrives (\w+, \w+ \d{1,2})/.exec(text)?.[1];
+    expect(shown, `${speed} shows an arrival date: ${text}`).toBeTruthy();
+    const { date, weekday } = parseArrival(shown!, startOfToday);
+    expect(WEEKDAYS[new Date(date).getUTCDay()], `${shown} is on the weekday it names`).toBe(weekday);
+    expect(["Saturday", "Sunday"], `${speed} does not arrive on a weekend`).not.toContain(weekday);
+    const days = (date - startOfToday) / DAY;
+    expect(days, `${speed} (${BUSINESS_DAYS[speed]} business days) arrives ${days} days out`).toBeGreaterThanOrEqual(BUSINESS_DAYS[speed] - (PINNED_CLOCK ? 0 : 1));
+    expect(days, `${speed} (${BUSINESS_DAYS[speed]} business days) arrives ${days} days out`).toBeLessThanOrEqual(BUSINESS_DAYS[speed] + 2);
+    if (PINNED_CLOCK) expect(shown).toBe(FIXTURE_ARRIVAL[speed]);
+    arrivals[speed] = shown!;
+    dates.push(date);
+  }
+  expect(dates, "one-day before expedited before standard").toEqual([...dates].sort((a, b) => a - b));
+  expect(new Set(dates).size).toBe(3);
+  return arrivals;
+}
+
 const stepHeading = (page: Page, text: string | RegExp) => expect(page.locator("#checkout-step-heading")).toHaveText(text);
 
-/** Cart with the knife, through address, delivery and payment, stopping on the review step. */
-async function toReview(page: Page, delivery: "standard" | "expedited" | "one-day" = "standard") {
+/** Cart with the knife, through address, delivery and payment, stopping on the review step. Returns the arrival dates shown. */
+async function toReview(page: Page, delivery: Speed = "standard"): Promise<Record<Speed, string>> {
   await addToCart(page, KNIFE);
   await page.goto("/checkout");
   await expect(page).toHaveURL(/step=address/);
   await fillAddress(page);
   await page.getByRole("button", { name: "Continue to delivery" }).click();
   await expect(page).toHaveURL(/step=delivery/);
-  await page.getByRole("radio", { name: new RegExp(delivery === "standard" ? "Standard" : delivery === "expedited" ? "Expedited" : "One-day") }).check();
+  const arrivals = await deliveryArrivals(page);
+  await page.getByRole("radio", { name: new RegExp(OPTION_NAME[delivery]) }).check();
   await page.getByRole("button", { name: "Continue to payment" }).click();
   await expect(page).toHaveURL(/step=payment/);
   await fillCard(page);
   await page.getByRole("button", { name: "Review your order" }).click();
   await expect(page).toHaveURL(/step=review/);
+  await expect(page.locator('[data-shell="review"]')).toContainText(`arrives ${arrivals[delivery]}`);
+  return arrivals;
 }
 
 test.describe("J1: the golden path", () => {
@@ -131,7 +189,7 @@ test.describe("J1: the golden path", () => {
     await page.getByRole("radio", { name: /Expedited/ }).check();
     await expect(page.locator('[data-shell="summary-shipping"]')).toHaveText("$9.99");
     await expect(page.locator('[data-shell="summary-total"]')).toHaveText("$193.57");
-    await expect(page.locator('[data-shell="delivery-option"]').filter({ hasText: "Expedited" })).toContainText("Arrives Monday, October 5");
+    const arrives = (await deliveryArrivals(page)).expedited; // exact under the fixture clock, contract-checked on a deployment
     await page.getByRole("button", { name: "Continue to payment" }).click();
 
     // Payment (test mode)
@@ -145,7 +203,7 @@ test.describe("J1: the golden path", () => {
     const review = page.locator('[data-shell="review"]');
     await expect(review).toContainText("Ada Lovelace");
     await expect(review).toContainText("12 Analytical Way");
-    await expect(review).toContainText("Expedited delivery: arrives Monday, October 5");
+    await expect(review).toContainText(`Expedited delivery: arrives ${arrives}`);
     await expect(review.locator('[data-shell="review-payment"]')).toHaveText("Visa ending in 4242");
     await expect(review).toContainText("Color: Space Silver");
     await expect(review).toContainText("Qty 2 × $84.99");
@@ -160,7 +218,7 @@ test.describe("J1: the golden path", () => {
     await expect(confirmation.getByRole("heading", { level: 1 })).toContainText("Order placed");
     const orderNumber = (await confirmation.locator('[data-shell="order-number"]').textContent())!;
     expect(orderNumber).toMatch(/^111-\d{7}-\d{7}$/);
-    await expect(confirmation.locator('[data-shell="arrival"]')).toContainText("Monday, October 5");
+    await expect(confirmation.locator('[data-shell="arrival"]')).toContainText(arrives);
     await expect(confirmation.locator('[data-shell="payment-method"]')).toContainText("Visa ending in 4242");
     await expect(confirmation).toContainText("Ada Lovelace");
     await expect(confirmation).toContainText("Seattle, WA 98101");
@@ -183,7 +241,7 @@ test.describe("J1: the golden path", () => {
     await expect(card).toHaveCount(1);
     await expect(card.locator('[data-shell="order-list-id"]')).toHaveText(orderNumber);
     await expect(card.locator('[data-shell="order-list-total"]')).toHaveText("$193.57");
-    await expect(card).toContainText("arriving Monday, October 5");
+    await expect(card).toContainText(`arriving ${arrives}`);
     await expect(card).toContainText("Aura Wireless");
 
     await page.goto("/cart");
@@ -397,13 +455,13 @@ test.describe("order creation", () => {
   });
 
   test("the cart is cleared only after success, and a second order gets its own number", async ({ page }) => {
-    await toReview(page);
+    const firstArrivals = await toReview(page);
     await expect(badge(page, 1)).toBeVisible();
     await page.locator('[data-shell="place-order"]').click();
     await expect(page).toHaveURL(/confirmation$/);
     const first = (await orders(page))[0]!.id;
 
-    await toReview(page, "expedited");
+    const secondArrivals = await toReview(page, "expedited");
     await page.locator('[data-shell="place-order"]').click();
     await expect(page).toHaveURL(/confirmation$/);
     const list = await orders(page);
@@ -413,10 +471,11 @@ test.describe("order creation", () => {
     const cards = page.locator('[data-shell="order-card"]');
     await expect(cards).toHaveCount(2);
     await expect(cards.first().locator('[data-shell="order-list-id"]')).not.toHaveText(first);
-    // Newest first: the expedited order ($49.99 + $9.99 + 8% tax) arrives Monday, the standard one Thursday.
+    // Newest first: the expedited order ($49.99 + $9.99 + 8% tax), then the standard one, each with the date it was promised.
     await expect(cards.first().locator('[data-shell="order-list-total"]')).toHaveText("$63.98");
-    await expect(cards.first()).toContainText("arriving Monday, October 5");
+    await expect(cards.first()).toContainText(`arriving ${secondArrivals.expedited}`);
     await expect(cards.nth(1).locator('[data-shell="order-list-total"]')).toHaveText("$53.99");
+    await expect(cards.nth(1)).toContainText(`arriving ${firstArrivals.standard}`);
   });
 
   test("a multi-item, multi-variant order carries exact integer-cent totals from review to confirmation to orders", async ({ page }) => {

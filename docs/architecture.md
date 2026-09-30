@@ -73,7 +73,7 @@ The product variant is `?variant=<id>` (PDP) and the checkout step `?step=` (S5)
 
 ## 7. Money, time, determinism
 - **Integer cents** everywhere; `lib/pricing` is the only place that computes line totals, savings %, shipping, tax (flat 8%, round half up) and order total. UI formats with one `formatMoney(cents)`.
-- `lib/clock` exposes `now()`; production returns real time, and setting `APP_FIXED_NOW` (an ISO timestamp) pins it. The Playwright web server sets it to `2026-10-01T12:00:00Z`, so delivery estimates are exact in tests. Delivery ETAs and order dates go through it (`lib/delivery` adds business days in UTC).
+- `lib/clock` exposes `now()`; production returns real time, and setting `APP_FIXED_NOW` (an ISO timestamp) pins it. The local Playwright web server sets it to `2026-10-01T12:00:00Z` (`tests/e2e/fixture-clock.ts`), so delivery estimates are exact in tests. **Production deliberately runs on the real clock** (no `APP_FIXED_NOW`), so its dates move every day; E2E against a deployment checks the delivery contract instead of fixture dates (see [testing-strategy.md](testing-strategy.md#7-as-built-through-s5)). Delivery ETAs and order dates go through it (`lib/delivery` adds business days in UTC).
 
 ## 8. Deterministic mock checkout
 **As built (S5).** No network calls anywhere in checkout; everything is client-side and deterministic.
