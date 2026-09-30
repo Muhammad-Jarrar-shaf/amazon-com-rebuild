@@ -96,8 +96,8 @@ Per [ADR-0004](decisions/0004-asset-strategy.md): 13 licensed Unsplash photograp
 ## 11. Repository layout (target)
 ```
 app/            routes (page.tsx, s/, dp/[id]/, cart/, checkout/, orders/, not-found.tsx, error.tsx)
-components/     layout/, pdp/, search/, cart/, checkout/, orders/, ui/
-lib/            catalog/{types,variants,index}, search/{text,types,url,engine,suggest,summary,server}, pricing, quantity, availability, delivery, format, color, clock, purchase, nav, departments, cart/{types,model,lookup,server,persistence,store}, checkout/{types,address,delivery,payment,state,persistence,store,place-order}, orders/{types,create,persistence,store}
+components/     layout/, home/, pdp/, search/, cart/, checkout/, orders/, ui/
+lib/            catalog/{types,variants,index}, search/{text,types,url,engine,suggest,summary,server}, pricing, quantity, availability, delivery, format, color, clock, purchase, nav, departments, cart/{types,model,lookup,server,persistence,store}, checkout/{types,address,delivery,payment,state,persistence,store,place-order}, orders/{types,create,persistence,store}, home/{types,content,server}
 data/           products/<department>.ts + index.ts, images.ts
 public/         assets/products/*.webp, assets/CREDITS.md
 tests/          unit (colocated *.test.ts) and e2e/ (Playwright)
