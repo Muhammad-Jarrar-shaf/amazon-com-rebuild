@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { addToCart } from "@/lib/cart-boundary";
 import {
   getAllProducts,
   getBreadcrumb,
@@ -178,12 +177,6 @@ describe("resolvePurchase", () => {
     for (const reason of ["unknown_product", "unknown_variant", "unavailable", "invalid_quantity"] as const) {
       expect(PURCHASE_FAILURE_MESSAGES[reason].length).toBeGreaterThan(5);
     }
-  });
-});
-
-describe("cart boundary", () => {
-  it("does not pretend to add anything until the cart exists", () => {
-    expect(addToCart({ productId: HERO, variantId: "midnight-black", quantity: 1 })).toEqual({ added: false, reason: "cart-not-built" });
   });
 });
 

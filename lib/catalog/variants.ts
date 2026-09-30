@@ -4,7 +4,7 @@ import type { Product, Variant } from "./types";
 // Pure variant helpers that operate on a product object and import no catalog data, so client components
 // (the product page's interactive parts) can use them without shipping the whole catalog to the browser.
 
-export function getVariantAvailability(variant: Variant): Availability {
+export function getVariantAvailability(variant: Pick<Variant, "stock" | "shippingRestricted">): Availability {
   return getAvailability(variant.stock, variant.shippingRestricted);
 }
 

@@ -281,21 +281,17 @@ test.describe("quantity", () => {
   });
 });
 
-test.describe("add to cart boundary", () => {
-  test("validates the selection and says honestly that the cart is not built yet", async ({ page }) => {
+test.describe("add to cart validation", () => {
+  test("adds the selected variant and quantity and confirms in the mini-cart", async ({ page }) => {
     await page.goto(`/dp/${HERO_ID}`);
     await page.getByRole("button", { name: "Increase quantity" }).click();
     await buyBox(page).getByRole("button", { name: "Add to cart" }).click();
-    const status = buyBox(page).getByRole("status").filter({ hasText: "Your selection is ready" });
-    await expect(status).toContainText("2 × Midnight Black");
-    await expect(status).toContainText("$159.98");
-    await expect(status).toContainText("nothing has been added yet");
-    // Nothing is added: the header cart count is untouched.
-    await expect(page.getByRole("link", { name: "Cart, 0 items" })).toBeVisible();
-
-    // The notice belongs to the selection it was raised for.
-    await page.getByRole("button", { name: "Increase quantity" }).click();
-    await expect(buyBox(page).getByText("Your selection is ready")).toHaveCount(0);
+    const dialog = page.getByRole("dialog", { name: "Shopping Cart" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("Added to cart");
+    await expect(dialog.getByRole("textbox", { name: /Quantity of/ })).toHaveValue("2");
+    await expect(dialog).toContainText("$159.98");
+    await expect(page.getByRole("link", { name: "Cart, 2 items" })).toBeVisible();
   });
 });
 
@@ -491,6 +487,8 @@ test.describe("accessibility (axe)", () => {
     await expect(quantityInput(page)).toHaveValue("2");
     await page.getByRole("button", { name: "Add to cart" }).focus();
     await page.keyboard.press("Enter");
-    await expect(buyBox(page)).toContainText("2 × Space Silver");
+    const dialog = page.getByRole("dialog", { name: "Shopping Cart" });
+    await expect(dialog).toContainText("Color: Space Silver");
+    await expect(dialog.getByRole("textbox", { name: /Quantity of/ })).toHaveValue("2");
   });
 });

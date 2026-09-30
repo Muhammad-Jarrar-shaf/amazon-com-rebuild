@@ -1,13 +1,19 @@
 import { getVariantAvailability } from "@/lib/catalog/variants";
-import type { Product } from "@/lib/catalog/types";
+import type { Variant } from "@/lib/catalog/types";
 import { lineTotalCents, type Cents } from "@/lib/pricing";
 import { isValidQuantity } from "@/lib/quantity";
 
-/** What the cart (S4) will receive: ids and a quantity only. Prices are always resolved from the catalog. */
+/** What the cart receives: ids and a quantity only. Prices are always resolved from the catalog. */
 export interface AddToCartRequest {
   productId: string;
   variantId: string;
   quantity: number;
+}
+
+/** The part of a product a purchase check reads (a full Product or the cart's compact projection). */
+export interface PurchasableProduct {
+  id: string;
+  variants: readonly Pick<Variant, "id" | "priceCents" | "stock" | "shippingRestricted">[];
 }
 
 export type PurchaseFailure = "unknown_product" | "unknown_variant" | "unavailable" | "invalid_quantity";
@@ -28,7 +34,7 @@ export const PURCHASE_FAILURE_MESSAGES: Record<PurchaseFailure, string> = {
  * be a whole number within [1, min(10, stock)]. Nothing is silently clamped or coerced. Takes the product object
  * (looked up by the caller) so client components can use it without importing the catalog data.
  */
-export function resolvePurchase(product: Product | undefined, variantId: string, quantity: number): PurchaseResult {
+export function resolvePurchase(product: PurchasableProduct | undefined, variantId: string, quantity: number): PurchaseResult {
   if (!product) return { ok: false, reason: "unknown_product" };
   const variant = product.variants.find((candidate) => candidate.id === variantId);
   if (!variant) return { ok: false, reason: "unknown_variant" };

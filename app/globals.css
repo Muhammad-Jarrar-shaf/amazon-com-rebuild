@@ -205,6 +205,53 @@ dialog:is(.nav-drawer, .filter-drawer)::backdrop {
   }
 }
 
+/* Mini-cart: the same dialog treatment, sliding in from the right. */
+dialog.mini-cart {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: min(100vw, 26rem);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  background: #fff;
+  color: var(--color-ink);
+  translate: 100% 0;
+  transition:
+    translate 0.2s ease-out,
+    overlay 0.2s allow-discrete,
+    display 0.2s allow-discrete;
+}
+
+dialog.mini-cart[open] {
+  translate: 0 0;
+}
+
+@starting-style {
+  dialog.mini-cart[open] {
+    translate: 100% 0;
+  }
+}
+
+dialog.mini-cart::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.mini-cart {
+    transition: none;
+  }
+}
+
+/* The cart page sits on the light gray page background from tablet width up (docs/ux-spec.md). */
+@media (min-width: 768px) {
+  body:has([data-page="cart"]) {
+    background: var(--color-page-gray);
+  }
+}
+
 body:has(dialog[open]) {
   overflow: hidden;
 }

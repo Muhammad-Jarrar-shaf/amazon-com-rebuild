@@ -30,7 +30,7 @@ No other runtime dependencies without an ADR or a written justification in the c
 - **Server Components (default):** layout shell, home, results (`/s`), PDP (`/dp/[id]`), category pages, static footer. They call `lib/catalog` directly; no Route Handlers or Server Actions in MVP.
 - **Client Components (opt-in with `"use client"`):** shell interactivity (`SearchBar`, `MenuButton`, `NavDrawer` on a native `<dialog>`, `MobileBanner`), `SearchBox` (suggestions, keyboard, built on the shell's `SearchBar` in S3), `FilterDrawer`/`SortSelect` (URL updates), `Gallery` + `VariantPicker` + `BuyBox` (PDP interactivity), `MiniCart`, cart page, checkout stepper, `HeroCarousel`.
 - Client components receive plain serializable props (product DTOs), never functions or class instances.
-- **Bundle rule (S2):** client components must not import `lib/catalog` (its index imports the seed data, so the whole catalog would ship to every browser). They use the data-free modules instead: `lib/catalog/types`, `lib/catalog/variants` (default/selected variant, availability), `lib/pricing`, `lib/quantity`, `lib/purchase` (takes the product object) and `lib/cart-boundary`.
+- **Bundle rule (S2):** client components must not import `lib/catalog` (its index imports the seed data, so the whole catalog would ship to every browser). They use the data-free modules instead: `lib/catalog/types`, `lib/catalog/variants` (default/selected variant, availability), `lib/pricing`, `lib/quantity`, `lib/purchase` (takes a product or the cart's projection) and `lib/cart/{types,model,lookup,persistence,store}`.
 - **Product page composition (S2):** `app/dp/[id]/page.tsx` (server, dynamic: it reads `?variant=`) looks up the product and renders one `.pdp-grid` inside a client `ProductProvider`, which holds the selected variant and quantity. Server components (header/rating, About, details, related rail) stay static; client components (`ProductGallery`, `PriceBlock`, `VariantPicker`, `BuyBox`) read the provider so one variant change updates image, price, availability and the URL together. Grid areas rearrange the same DOM per breakpoint (`.pdp-grid` in `app/globals.css`).
 - Anything reading `localStorage` renders a stable server placeholder first and hydrates after mount to avoid hydration mismatch (e.g. cart count shows after mount).
 
@@ -65,9 +65,11 @@ No other runtime dependencies without an ADR or a written justification in the c
 The product variant is `?variant=<id>` (PDP) and the checkout step `?step=` (S5).
 
 ## 6. Cart and orders
-- Zustand store `useCart`: lines `{productId, variantId, qty}` only (no prices stored; prices always resolved from the catalog). Actions: `add`, `setQty`, `remove` (keeps a one-slot `lastRemoved` for Undo), `clear`. Persist middleware -> `localStorage` key `cart:v1`, with a version field and safe parse (corrupt/unknown data is discarded, never crashes).
+- **Cart store (S4, as built):** one canonical vanilla Zustand store (`lib/cart/store.ts`; `cartStore` + `useCart` selector hook; `createCartStore()` for tests) shared by the product page, result rows, mini-cart, cart page and header badge. Lines are `{productId, variantId, quantity}` only; **identity is product + variant** (two colors are two lines). Totals, titles and prices are never stored: `lib/cart/model.ts` (pure, unit-tested) recomputes them from the catalog through `lib/pricing` (integer cents). Actions: `add` (validates with `resolvePurchase`, merges, caps at 10 / stock), `setQuantity` (integers >= 1, capped; removal is a separate action), `remove` (one-slot `lastRemoved` for Undo, restored at its old position; session only), `undo`, `hydrate`, mini-cart open/close.
+- **Catalog boundary:** the client never imports the catalog. The server layout passes `CartProvider` a compact `CartLookup` projection (title, variant labels, prices, stock, primary image per variant; `lib/cart/lookup.ts` is data-free, `lib/cart/server.ts` is the only server-side importer). Trade-off: about 15 KB of props on every page in exchange for no backend and no per-page fetch; revisit if the catalog grows.
+- **Persistence:** `localStorage` key `cart:v1` holding `{version: 1, lines}` (`lib/cart/persistence.ts`). Hydration happens in a layout effect in `CartProvider`; storage is written only after hydration (an unread cart is never overwritten) and every read/write is wrapped so blocked or full storage leaves an in-memory cart. Untrusted data is sanitized line by line: unknown product/variant, unavailable variant or invalid quantity are removed, over-limit quantities reduced, duplicates merged, prototype-named ids ignored (`Object.hasOwn`). Unreadable JSON, wrong shape or another version resets to an empty cart. Any recovery sets a shopper-visible notice (mini-cart and cart page). Changing the shape means a new key/version, never in-place guessing.
 - `orders:v1` in `localStorage`: array of order snapshots `{id, createdAt, lines (with priced snapshot), address, delivery, paymentLast4, totals}`; a monotonic `orderSeq` derives the order number (FR-ORD-2).
-- Cross-tab consistency: the store listens to the `storage` event.
+- Cross-tab consistency: the cart re-hydrates from the `storage` event (implemented in `connectCartStorage`).
 
 ## 7. Money, time, determinism
 - **Integer cents** everywhere; `lib/pricing` is the only place that computes line totals, savings %, shipping, tax (flat 8%, round half up) and order total. UI formats with one `formatMoney(cents)`.
@@ -85,8 +87,8 @@ Per [ADR-0004](decisions/0004-asset-strategy.md): 13 licensed Unsplash photograp
 ## 11. Repository layout (target)
 ```
 app/            routes (page.tsx, s/, dp/[id]/, cart/, checkout/, orders/, not-found.tsx, error.tsx)
-components/     layout/, pdp/, search/, ui/  (cart/, checkout/ arrive in later slices)
-lib/            catalog/{types,variants,index}, search/{text,types,url,engine,suggest,summary,server}, pricing, quantity, availability, delivery, format, color, clock, purchase, cart-boundary, nav, departments  (cart-store, orders, checkout, url in later slices)
+components/     layout/, pdp/, search/, cart/, ui/  (checkout/ arrives in a later slice)
+lib/            catalog/{types,variants,index}, search/{text,types,url,engine,suggest,summary,server}, pricing, quantity, availability, delivery, format, color, clock, purchase, nav, departments, cart/{types,model,lookup,server,persistence,store}  (orders, checkout in later slices)
 data/           products/<department>.ts + index.ts, images.ts
 public/         assets/products/*.webp, assets/CREDITS.md
 tests/          unit (colocated *.test.ts) and e2e/ (Playwright)

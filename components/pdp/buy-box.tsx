@@ -4,15 +4,14 @@ import { useState } from "react";
 import { Price } from "@/components/pdp/price";
 import { useProduct } from "@/components/pdp/product-provider";
 import { QuantityStepper } from "@/components/pdp/quantity-stepper";
-import { addToCart } from "@/lib/cart-boundary";
+import { useCartActions } from "@/components/cart/use-cart-view";
 import type { DeliveryEstimate } from "@/lib/delivery";
-import { formatMoney } from "@/lib/pricing";
 import { PURCHASE_FAILURE_MESSAGES, resolvePurchase } from "@/lib/purchase";
 
 interface Notice {
   /** Ties the notice to the selection it was raised for, so it disappears when variant or quantity changes. */
   key: string;
-  tone: "info" | "error";
+  tone: "error";
   text: string;
 }
 
@@ -20,11 +19,12 @@ const AVAILABILITY_TONE = { positive: "text-stock", warning: "text-price-sale", 
 
 /**
  * Purchase panel (FR-PDP-5..8): price (wide screens), delivery estimate, availability, quantity and Add to cart, plus
- * seller information. Add to cart validates with resolvePurchase and calls the cart boundary. The cart itself is S4, so
- * until then the panel says plainly that nothing was added. Buy Now is deferred (FR-PDP-11, stretch).
+ * seller information. Add to cart validates with resolvePurchase and adds through the shared cart store, which opens
+ * the mini-cart as the confirmation. Buy Now is deferred (FR-PDP-11, stretch).
  */
 export function BuyBox({ delivery, className = "" }: { delivery: DeliveryEstimate; className?: string }) {
   const { product, variant, availability, quantity, setQuantity } = useProduct();
+  const { add } = useCartActions();
   const [notice, setNotice] = useState<Notice | null>(null);
   const selectionKey = `${variant.id}:${quantity}`;
   const visibleNotice = notice?.key === selectionKey ? notice : null;
@@ -35,16 +35,9 @@ export function BuyBox({ delivery, className = "" }: { delivery: DeliveryEstimat
       setNotice({ key: selectionKey, tone: "error", text: PURCHASE_FAILURE_MESSAGES[result.reason] });
       return;
     }
-    const outcome = addToCart(result.request);
-    if (outcome.added) {
-      setNotice(null);
-      return;
-    }
-    setNotice({
-      key: selectionKey,
-      tone: "info",
-      text: `Your selection is ready: ${quantity} × ${variant.label} (${formatMoney(result.lineTotalCents)}). The cart arrives in the next build step, so nothing has been added yet.`,
-    });
+    const outcome = add(result.request);
+    // On success the mini-cart opens and confirms; only a rejection is reported here.
+    setNotice(outcome.ok ? null : { key: selectionKey, tone: "error", text: PURCHASE_FAILURE_MESSAGES[outcome.reason] });
   };
 
   return (
@@ -83,7 +76,7 @@ export function BuyBox({ delivery, className = "" }: { delivery: DeliveryEstimat
 
       <div role="status" aria-live="polite">
         {visibleNotice && (
-          <p className={`mt-3 rounded-md border p-2.5 text-sm ${visibleNotice.tone === "error" ? "border-deal text-deal" : "border-line bg-page-gray text-ink"}`}>
+          <p className="mt-3 rounded-md border border-deal p-2.5 text-sm text-deal">
             {visibleNotice.text}
           </p>
         )}

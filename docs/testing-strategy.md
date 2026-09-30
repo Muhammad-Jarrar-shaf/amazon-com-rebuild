@@ -5,7 +5,7 @@ Test the behavior that decides whether the golden path works and whether money i
 ## 1. Layers
 | Layer | Tool | What | Covers |
 |---|---|---|---|
-| Unit | Vitest | `lib/pricing`, `lib/cart-store`, `lib/catalog`, `lib/url`, `lib/checkout`, `lib/orders`, catalog data validation | NFR-TEST-1, NFR-DET-1 |
+| Unit | Vitest | `lib/pricing`, `lib/cart`, `lib/catalog`, `lib/url`, `lib/checkout`, `lib/orders`, catalog data validation | NFR-TEST-1, NFR-DET-1 |
 | E2E | Playwright vs `next build && next start` | J1 desktop golden path; J4 mobile smoke; cheap smokes for J2/J3/J5 | NFR-TEST-2 |
 | Accessibility | `@axe-core/playwright` inside the E2E run | Home, Results, PDP, Cart, Checkout, Confirmation | NFR-A11Y-1, -4, -5 |
 | Manual | checklist below | keyboard, focus, 375px overflow, tap targets, visual | NFR-A11Y-2, -3, -6, NFR-RESP-* |
@@ -13,7 +13,7 @@ Test the behavior that decides whether the golden path works and whether money i
 
 ## 2. Unit tests (minimum set)
 - **Pricing:** line total, savings % (rounded), subtotal, shipping per option, tax = 8% half-up, order total; rounding edge cases (e.g. 1 cent, half-cent boundaries); no floating point (FR-CHK-8, NFR-DET-1).
-- **Cart:** add new, add same variant merges, qty clamp 1-10, `setQty`, remove, Undo restores the exact line and position, clear, persistence round-trip, corrupt/unknown storage is discarded without throwing (FR-CART-1..4).
+- **Cart:** add new, add same variant merges, different variants stay separate, qty clamp 1-10 and stock, `setQuantity` bounds, remove, Undo restores the exact line and position, subtotal/count aggregation in integer cents, persistence round-trip, corrupt/stale/other-version storage recovers with a notice, unavailable/vanished products removed, storage that throws (FR-CART-1..4).
 - **Search/filter/sort:** keyword hits title/brand/tags, no-match returns empty, suggestions (max 8, needs >=2 chars), Brand OR-within/AND-across, rating and price bounds, each sort key, pagination boundaries (page 1, last, out of range), URL parse/build round-trip (FR-SRCH-1..9).
 - **Checkout:** address validation (each field, ZIP forms, phone), card validation (Luhn, expiry, CVC), `4242...` accepted, `4000 0000 0000 0002` declined, order totals recomputed from the catalog (tampered cart prices ignored), `createOrder` idempotent per `submissionId`, order number format and sequencing, full number/CVC absent from the returned order (FR-CHK-2..8, FR-ORD-1..2, NFR-SEC-3).
 - **Data validation:** unique ids, valid variant/related references, positive integer prices, list price >= price, every image path exists or is intentionally fallback.
@@ -47,10 +47,12 @@ After each deploy (and in S9 from a cold clone): run the J1 test against the pub
 - **G1** (after S5 and the test harness): J1 desktop + J4 mobile smoke + axe pass on the **deployed** build.
 - Submission gate: [delivery-plan.md acceptance criteria](delivery-plan.md#acceptance-criteria).
 
-## 7. As built (through S2)
+## 7. As built (through S4)
 **Unit (Vitest, `pnpm test`, 78 tests):** `lib/pricing`, `quantity`, `availability`, `delivery` (+ `clock`), `format`/`color`, `nav`, `catalog/catalog.test.ts` (lookup, related, featured, variant selection, availability states, `resolvePurchase`, search records), `catalog/data.test.ts` (seed integrity: unique ids, integer cents, compare-at above price, every related id resolves, every asset file exists and is credited, demo states present) and `site`.
 
-**E2E (Playwright, `pnpm e2e`, desktop 1440 + mobile 375):** `smoke.spec.ts`, `shell.spec.ts` (S1) and `pdp.spec.ts` (S2: content, gallery, variants incl. the disabled/unavailable variant and URL state, quantity bounds and keyboard, the honest add-to-cart notice, product states, invalid id 404, related navigation, image-failure fallback, desktop layout at 1440/1280/1024/768/375, mobile order and 44px targets, axe on six PDP states, and every product page at both widths).
+**E2E (Playwright, `pnpm e2e`, desktop 1440 + mobile 375):** `smoke.spec.ts`, `shell.spec.ts` (S1) and `pdp.spec.ts` (S2: content, gallery, variants incl. the disabled/unavailable variant and URL state, quantity bounds and keyboard, add-to-cart validation, product states, invalid id 404, related navigation, image-failure fallback, desktop layout at 1440/1280/1024/768/375, mobile order and 44px targets, axe on six PDP states, and every product page at both widths).
+
+**Cart (S4):** unit `lib/cart/model.test.ts`, `store.test.ts` (fake storages, including ones that throw) and `catalog-integration.test.ts` (the real seed catalog through the projection); regression-checked by mutation (removing the merge cap or ignoring the variant in the line identity each fail tests). E2E `cart.spec.ts`: PDP variant/quantity through the mini-cart to `/cart`, merge vs separate variants, quantity limits, search-row add, the J3 journey (two products, quantity, delete, Undo, reload, stored shape), typed quantities, header cart opening the mini-cart, empty cart, corrupted/stale/old-version/blocked storage, Esc + focus return, a keyboard-only cart journey, backdrop close, the checkout entry point, axe (cart with items, empty, mini-cart open), overflow and 44px targets at 375.
 
 **Determinism:** the Playwright web server sets `APP_FIXED_NOW=2026-10-01T12:00:00Z` (see `lib/clock.ts`), so delivery dates are asserted exactly ("Tuesday, October 6"); against an external `E2E_BASE_URL` the tests match the pattern instead. `reuseExistingServer` is off unless `E2E_REUSE_SERVER=1`, so a run always builds and tests the current code.
 

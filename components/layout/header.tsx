@@ -1,6 +1,7 @@
 import { MenuIcon } from "@/components/icons";
 import { DeliveryLocation } from "@/components/layout/delivery-location";
-import { AccountEntry, CartEntry, LocaleEntry, OrdersEntry } from "@/components/layout/header-entries";
+import { HeaderCart } from "@/components/cart/header-cart";
+import { AccountEntry, LocaleEntry, OrdersEntry } from "@/components/layout/header-entries";
 import { Logo } from "@/components/layout/logo";
 import { MenuButton } from "@/components/layout/menu-button";
 import { MobileBanner } from "@/components/layout/mobile-banner";
@@ -14,7 +15,7 @@ import { getSuggestionTerms } from "@/lib/search/server";
  * Site header (FR-NAV-1..4). One DOM for every width: the top bar is a CSS grid whose areas change per
  * breakpoint (see .header-grid in globals.css), the sub-nav (>=768) and chip row (<768) are separate navs,
  * and the delivery row shows below 1280 where the top bar no longer has room for it.
- * The cart count is fixed at 0 until the cart store exists (S4).
+ * The cart entry shows the cart store's item count (HeaderCart).
  */
 export function Header() {
   return (
@@ -31,7 +32,7 @@ export function Header() {
           <LocaleEntry className="hidden [grid-area:lang] xl:flex" />
           <AccountEntry className="[grid-area:account]" />
           <OrdersEntry className="[grid-area:orders]" />
-          <CartEntry count={0} className="[grid-area:cart]" />
+          <HeaderCart className="[grid-area:cart]" />
         </div>
       </div>
       <SecondaryNav />

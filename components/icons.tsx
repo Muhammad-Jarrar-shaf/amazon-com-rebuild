@@ -83,3 +83,20 @@ export function ChevronRightIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function TrashIcon({ className }: IconProps) {
+  return (
+    <svg {...svgProps} {...stroke} className={className}>
+      <path d="M4 7h16M9 7V4.5h6V7M6.5 7l.9 12.5h9.2L17.5 7M10 11v5.5M14 11v5.5" />
+    </svg>
+  );
+}
+
+export function CheckCircleIcon({ className }: IconProps) {
+  return (
+    <svg {...svgProps} {...stroke} className={className}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m8 12.4 2.7 2.7L16.2 9.5" />
+    </svg>
+  );
+}

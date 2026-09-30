@@ -186,15 +186,6 @@ test.describe("results", () => {
     expect(problems).toEqual([]);
   });
 
-  test("a single-variant product offers Add to cart, which is honest about the missing cart", async ({ page }) => {
-    await page.goto("/s?k=chef+knife");
-    const row = rows(page).first();
-    await expect(row).toContainText("Chef's Knife");
-    await row.getByRole("button", { name: /Add to cart/ }).click();
-    await expect(row).toContainText("Nothing was added");
-    await expect(page.getByRole("link", { name: "Cart, 0 items" })).toBeVisible();
-  });
-
   test("an unavailable product shows its state and no purchase action", async ({ page }) => {
     await page.goto("/s?k=bolt+speaker");
     const row = rows(page).filter({ hasText: "Voxel Bolt" });

@@ -1,3 +1,4 @@
+import type { MouseEventHandler } from "react";
 import { CaretDownIcon, CartIcon, ChevronRightIcon, GlobeIcon, PersonIcon } from "@/components/icons";
 import { NavLink } from "@/components/ui/nav-link";
 import { formatCartCount } from "@/lib/nav";
@@ -6,7 +7,7 @@ interface EntryProps {
   className?: string;
 }
 
-// Destinations for these entries arrive in later slices (cart S4, orders S5); until then NavLink renders
+// Destinations for these entries arrive in later slices (orders S5); until then NavLink renders
 // them as intentionally unavailable (lib/nav.ts AVAILABLE_ROUTES).
 
 export function AccountEntry({ className = "" }: EntryProps) {
@@ -47,10 +48,11 @@ export function LocaleEntry({ className = "" }: EntryProps) {
   );
 }
 
-export function CartEntry({ count, className = "" }: EntryProps & { count: number }) {
+export function CartEntry({ count, className = "", onClick }: EntryProps & { count: number; onClick?: MouseEventHandler<HTMLElement> }) {
   return (
     <NavLink
       href="/cart"
+      onClick={onClick}
       aria-label={`Cart, ${count} ${count === 1 ? "item" : "items"}`}
       className={`nav-item flex min-h-[var(--tap)] items-end gap-0.5 px-1 pb-1 text-white md:px-2 ${className}`}
     >

@@ -56,7 +56,7 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 |---|---|---|---|---|
 | FR-CART-1 | Cart persists across reload and new tabs in the same browser (localStorage) | O | MVP | J3 |
 | FR-CART-2 | Adding the same product+variant merges quantities; quantity per line is clamped to 1-10 | D | MVP | J3 |
-| FR-CART-3 | Stepper (-, qty, +) updates the line quantity; the subtotal, "Subtotal (N items)" label and header count update inline with no page reload; a brief pending state is shown on the row | O | MVP | J3 |
+| FR-CART-3 | Stepper (-, qty, +) updates the line quantity; the subtotal, "Subtotal (N items)" label and header count update inline with no page reload; the update is synchronous (no artificial pending state) | O | MVP | J3 |
 | FR-CART-4 | Deleting a line shows an inline "<title> was removed from Shopping Cart." message with an Undo action that restores the line | O + D (Undo) | MVP | J3 |
 | FR-CART-5 | The mini-cart opened by Add to cart shows the added item, subtotal, "Go to Cart" and "Proceed to checkout" | O/D | MVP | J1 |
 | FR-CART-6 | Empty cart shows an empty state with a link to continue shopping; "Proceed to checkout" is not offered | D | MVP | J3 |
