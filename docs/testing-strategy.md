@@ -38,7 +38,7 @@ The clock is pinned in test builds so ETAs and dates are asserted exactly.
 6. Lighthouse recorded as a diagnostic only (NFR-PERF-1).
 
 ## 5. Production smoke
-After each deploy (and in S9 from a cold clone): run the J1 test against the public URL, check `/`, `/s?k=headphones`, one `/dp/...`, `/cart`, `/checkout` respond 200 and render, and confirm the deployed `next` version is 16.3.7 (or the recorded patched version). Any failure blocks the next slice.
+After each deploy (and in S9 from a cold clone): run the J1 test against the public URL (`E2E_BASE_URL=<url> pnpm e2e`; Playwright then skips the local build/server), check `/`, `/s?k=headphones`, one `/dp/...`, `/cart`, `/checkout` respond 200 and render, and confirm the deployed `next` version is 16.3.7 (or the recorded patched version). Any failure blocks the next slice.
 
 ## 6. Gates
 - Every slice ends with `pnpm typecheck && pnpm lint && pnpm test && pnpm build` green ([CLAUDE.md](../CLAUDE.md)).

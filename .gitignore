@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# test output
+coverage/
+playwright-report/
+test-results/
+
+# environment (secrets never committed; see .env.example)
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel/
+
+# os / editor
+.DS_Store
+
+# NOTE: .agent-logs/ is a submission artifact and must stay tracked. Never add it here.

@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Values marked "measured" come from amazon.com computed styles
+ * (docs/ux-spec.md); the rest are our own choices and may be tuned in polish.
+ * Tailwind's default breakpoints (sm 640, md 768, lg 1024) match the ux-spec.
+ */
+@theme {
+  --color-nav: #131921; /* measured */
+  --color-subnav: #232f3e; /* measured */
+  --color-cart-count: #f08804; /* measured */
+  --color-ink: #0f1111; /* measured */
+  --color-page-gray: #eaeded; /* design */
+  --color-cta: #ffd814; /* design (approx) */
+  --color-cta-hover: #f7ca00; /* design (approx) */
+  --color-buy-now: #ffa41c; /* design (approx) */
+  --color-search-btn: #febd69; /* design (approx) */
+  --color-link: #007185; /* design (approx) */
+  --color-price-sale: #b12704; /* design (approx) */
+  --font-sans: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-link);
+    outline-offset: 2px;
+  }
+}

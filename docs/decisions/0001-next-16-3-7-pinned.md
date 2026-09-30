@@ -1,10 +1,20 @@
 # ADR-0001: Next.js 16.3.7, pinned exactly
 
-- **Status:** Accepted (2026-09-30). To be re-verified at S0 before install.
+- **Status:** Accepted (2026-09-30). Re-verified and installed in S0 on 2026-09-30; `next@16.3.7` was still npm `latest`, so the planned pin stands.
 - **Context:** The framework must be a currently supported, patched line. Verified 2026-09-30 from official sources: the Next.js support policy lists **16.x as Active LTS** (released 2025-10-21) and 15.x as Maintenance LTS; the npm registry's `latest` tag is **16.3.7** (published 2026-09-29, not deprecated, `engines.node >= 20.9.0`, peer `react ^19`); the npm advisory database returns **0 advisories for 16.3.7**. The same database lists two **Critical** RCEs (Windows-hosted servers; Image Optimization API with AVIF files) affecting `>=16.0.0 <16.3.3`, so 16.3.0 to 16.3.2 must never be installed; GitHub's advisory page also lists a Critical `next/og` RCE (2026-09-22) and several High/Moderate items in July-August 2026 (Server Actions, Turbopack middleware bypass, rewrites SSRF).
 - **Decision:** Use **`next@16.3.7` with an exact pin** (no `^`/`~`), App Router. At S0, before installing, re-run `npm view next version` and `pnpm audit`; if a newer patched 16.3.x exists, install that instead and record the exact version and date here. Companion pins to verify at S0 and record: `react`/`react-dom` 19.3.0, `tailwindcss` + `@tailwindcss/postcss` 4.3.3, `zustand` 5.0.15, `vitest` 5.0.2, `@playwright/test` 1.63.0, `@axe-core/playwright` 4.13.0. **TypeScript:** the registry's `latest` is 7.0.2 but compatibility with Next 16.3.7 is unverified; install the version that passes `next build` typechecking and pin it.
 - **Reduce attack surface:** do not use `next/og`, Server Actions, custom servers, rewrites, or runtime image optimization (assets are static files); no middleware/proxy for MVP.
-- **Runtime:** local Node is 26.7.0 (satisfies `>=20.9`), but production uses a Vercel-supported LTS Node (22 or 24); `engines` and `.nvmrc` mirror it. Compatibility on Node 26 is only claimed after S0's build and tests pass.
+- **Runtime:** Vercel's documented Node versions are 24.x (default), 22.x and 20.x; **Node 26 is not offered**. The deploy target is therefore **Node 24**: `package.json` has `engines.node >=24` and `.nvmrc` is `24`. Local development uses Node 26.7.0, which satisfies `next` (`>=20.9`), Vitest 5.0.2 (`^22.12 || ^24 || >=26`) and ESLint. Build, lint, typecheck, unit tests and E2E were verified on **Node 26.7.0 only**; Node 24 (prod) is unverified locally because no Node 24 is installed, and is exercised by the first Vercel build.
 - **Consequences:** Exact pins mean security bumps are deliberate; `pnpm audit` is part of S0 and S9 verification (NFR-DEP-2).
 - **Alternatives:** Next 15 (Maintenance LTS, older patch cadence) or an unpinned `^16` range (could resolve to a vulnerable build in a stale lockfile scenario) were rejected.
-- **Exact installed versions (fill at S0):** _not installed yet_.
+- **Deviations from the planned companion pins (decided at S0, with reasons):**
+  - **TypeScript 6.0.3, not 7.0.2.** 7.0.2 is the native compiler: the package exposes only `bin/tsc` plus platform binaries and no JS API, while `typescript-eslint` requires `typescript <6.1.0` and Next's build typecheck uses the JS API. 6.0.3 is the last stable 6.x.
+  - **ESLint 9.39.5, not 10.11.0.** `eslint-config-next@16.3.7` bundles `eslint-plugin-import`, `-jsx-a11y` and `-react`, whose peer ranges stop at ESLint 9; ESLint 10 produced unmet peers. Caveat: npm marks ESLint 9.39.5 as deprecated ("no longer supported"). It has no audit findings; revisit when `eslint-config-next` supports ESLint 10.
+  - **`@types/node` 24.19.0** to match the Node 24 deploy runtime (26.6.3 is available).
+  - **`zustand` and `@axe-core/playwright` are not installed in S0**; each is added in the slice that first uses it (S4 and row T), per the no-unnecessary-dependencies rule.
+  - `pnpm` blocks the `unrs-resolver` install script (`allowBuilds: false` in `pnpm-workspace.yaml`); its prebuilt native binary package installs as an optional dependency and lint runs correctly without the script.
+- **Exact installed versions (S0, 2026-09-30, all exact pins via `save-exact=true`):**
+  - Runtime: `next` 16.3.7, `react` 19.3.0, `react-dom` 19.3.0.
+  - Dev: `typescript` 6.0.3, `tailwindcss` 4.3.3, `@tailwindcss/postcss` 4.3.3, `eslint` 9.39.5, `eslint-config-next` 16.3.7, `vitest` 5.0.2, `@playwright/test` 1.63.0, `@types/node` 24.19.0, `@types/react` 19.3.0, `@types/react-dom` 19.3.0.
+  - Tooling: pnpm 11.22.0, local Node 26.7.0, system Chrome 154 used by Playwright (`channel: "chrome"`, no browser download).
+  - `pnpm audit` and `pnpm audit --prod`: no known vulnerabilities.

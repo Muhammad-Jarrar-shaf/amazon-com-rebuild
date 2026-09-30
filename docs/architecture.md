@@ -18,11 +18,12 @@ Browser ── server-rendered pages (Server Components) ── lib/catalog ─�
 |---|---|
 | Framework | `next@16.3.7`, exact pin, App Router (16.x = Active LTS) |
 | UI runtime | `react@19.3.0`, `react-dom@19.3.0` |
-| Language | TypeScript, `strict: true`, `noUncheckedIndexedAccess: true`; the exact TS version is whichever passes `next build` typecheck at S0 and is then pinned (registry latest is 7.0.2; not assumed compatible) |
+| Language | TypeScript `6.0.3` (7.0.2 has no JS API and is incompatible with typescript-eslint and Next's typecheck; see ADR-0001), `strict: true`, `noUncheckedIndexedAccess: true` |
+| Lint | ESLint `9.39.5` + `eslint-config-next@16.3.7` (flat config); ESLint 10 is outside the peer range of the bundled plugins |
 | Styling | Tailwind CSS 4.3.3 via `@tailwindcss/postcss`; design tokens as CSS variables (see [ux-spec.md](ux-spec.md)) |
 | State | `zustand@5.0.15` for the cart/order store only |
-| Tests | `vitest@5.0.2`, `@playwright/test@1.63.0`, `@axe-core/playwright@4.13.0` |
-| Package manager / runtime | pnpm 11.x; Node: `engines >=20.9`, `.nvmrc` = the Vercel-supported LTS used in prod (22 or 24) |
+| Tests | `vitest@5.0.2`, `@playwright/test@1.63.0` (S0); `@axe-core/playwright@4.13.0` and `zustand@5.0.15` are added when first used (row T and S4) |
+| Package manager / runtime | pnpm 11.22.0; deploy runtime Node 24 (`engines.node >=24`, `.nvmrc` 24; Vercel offers 24/22/20, not 26); local dev on Node 26.7.0 |
 No other runtime dependencies without an ADR or a written justification in the commit message ([CLAUDE.md](../CLAUDE.md)).
 
 ## 3. Server / client boundary
