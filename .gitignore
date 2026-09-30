@@ -24,3 +24,4 @@ test-results/
 .DS_Store
 
 # NOTE: .agent-logs/ is a submission artifact and must stay tracked. Never add it here.
+.vercel

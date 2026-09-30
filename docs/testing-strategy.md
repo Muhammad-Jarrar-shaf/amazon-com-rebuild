@@ -40,6 +40,8 @@ The clock is pinned in test builds so ETAs and dates are asserted exactly.
 ## 5. Production smoke
 After each deploy (and in S9 from a cold clone): run the J1 test against the public URL (`E2E_BASE_URL=<url> pnpm e2e`; Playwright then skips the local build/server), check `/`, `/s?k=headphones`, one `/dp/...`, `/cart`, `/checkout` respond 200 and render, and confirm the deployed `next` version is 16.3.7 (or the recorded patched version). Any failure blocks the next slice.
 
+**Recorded runs:** S0, 2026-09-30: `E2E_BASE_URL=https://amazon-com-rebuild.vercel.app pnpm e2e` passed 2/2 (desktop 1440, mobile 375) against the public deployment, with no local server.
+
 ## 6. Gates
 - Every slice ends with `pnpm typecheck && pnpm lint && pnpm test && pnpm build` green ([CLAUDE.md](../CLAUDE.md)).
 - **G1** (after S5 and the test harness): J1 desktop + J4 mobile smoke + axe pass on the **deployed** build.
