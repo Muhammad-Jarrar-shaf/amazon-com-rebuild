@@ -1,0 +1,8 @@
+# ADR-0002: Guest checkout as a deterministic mock
+
+- **Status:** Accepted (2026-09-30).
+- **Context (observed):** On amazon.com, a signed-out "Proceed to checkout" redirects to "Sign in or create account" (`return_to=/checkout/entry/cart`). Nothing after that gate could be observed without credentials or a purchase, which were off-limits. See [product-recon.md](../product-recon.md).
+- **Decision:** Deliberately deviate: checkout is **guest-only** and needs no account, credentials or real payment. It is a **deterministic mock commerce flow**: Address -> Delivery -> Payment (test mode) -> Review -> Place order -> Confirmation, implemented as pure functions in `lib/checkout` with an injectable clock. Rules: 3 fixed delivery options ($0.00 / $9.99 / $19.99); flat 8% estimated tax (our simplification); test card `4242 4242 4242 4242` succeeds, `4000 0000 0000 0002` is declined, all others fail Luhn/format; only last-4 and brand are retained; totals are always recomputed from the catalog; one order per submission (idempotent); deterministic order number `111-NNNNNNN-NNNNNNN`. Orders persist in `localStorage`.
+- **Not claimed:** none of the steps, layouts, copy, delivery options, tax or order-number format are presented as Amazon behavior; they are designed for this assignment (labeled [D] in the docs).
+- **Consequences:** Evaluators can complete J1 signed out; tests are deterministic; there is no payment provider, no secrets, no server state. Trade-off: no real cross-device persistence or sign-in.
+- **Alternatives rejected:** requiring sign-in (blocks evaluators, needs accounts); a payment provider in test mode (keys, network dependency); copying Amazon's unseen checkout (would be invention presented as observation).
