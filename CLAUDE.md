@@ -21,6 +21,7 @@ Operational rules for the rest of the 8x assignment: a rebuild of amazon.com's c
 - **Verify before claiming completion:** never say "done/fixed/passing" without having run the relevant command in this session and read its output: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`, plus `pnpm e2e` for journey-affecting work. Report failures plainly with the output.
 - **Docs stay true:** update the relevant doc in the same commit whenever behavior, scope, architecture, time budget, or a decision changes ([requirements](docs/requirements.md) IDs are referenced by tests, so keep them stable; add, don't renumber). Keep [product-recon](docs/product-recon.md) honest: observed vs inferred vs decided.
 - Do not present designed behavior (checkout, delivery, payment, order numbers) as Amazon behavior anywhere: UI copy, docs or demo.
+- **Shell links to unbuilt routes are inert, never 404s.** When a slice implements a route, add it to `AVAILABLE_ROUTES` in `lib/nav.ts` in the same commit (and adjust `lib/nav.test.ts` / the shell E2E expectations that assert inertness). Link through `NavLink` (`components/ui/nav-link.tsx`).
 
 ## Quality bars
 - **Accessibility:** axe zero critical/serious on Home, Results, PDP, Cart, Checkout, Confirmation; keyboard-operable primary controls; visible focus; semantic landmarks; labeled inputs; errors announced; >=44px tap targets on mobile. Lighthouse is a diagnostic, not a gate.

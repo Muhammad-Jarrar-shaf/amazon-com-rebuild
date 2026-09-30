@@ -28,7 +28,7 @@ No other runtime dependencies without an ADR or a written justification in the c
 
 ## 3. Server / client boundary
 - **Server Components (default):** layout shell, home, results (`/s`), PDP (`/dp/[id]`), category pages, static footer. They call `lib/catalog` directly; no Route Handlers or Server Actions in MVP.
-- **Client Components (opt-in with `"use client"`):** `SearchBox` (suggestions, keyboard), `FilterDrawer`/`SortSelect` (URL updates), `Gallery` + `VariantPicker` + `BuyBox` (PDP interactivity), `MiniCart`, cart page, checkout stepper, `HeroCarousel`.
+- **Client Components (opt-in with `"use client"`):** shell interactivity (`SearchBar`, `MenuButton`, `NavDrawer` on a native `<dialog>`, `MobileBanner`), `SearchBox` (suggestions, keyboard, built on the shell's `SearchBar` in S3), `FilterDrawer`/`SortSelect` (URL updates), `Gallery` + `VariantPicker` + `BuyBox` (PDP interactivity), `MiniCart`, cart page, checkout stepper, `HeroCarousel`.
 - Client components receive plain serializable props (product DTOs), never functions or class instances.
 - Anything reading `localStorage` renders a stable server placeholder first and hydrates after mount to avoid hydration mismatch (e.g. cart count shows after mount).
 

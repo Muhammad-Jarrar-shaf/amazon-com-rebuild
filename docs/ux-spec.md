@@ -29,9 +29,16 @@ Values from Amazon are *measured* (computed style, 2026-09-30). Values marked *d
 | Spacing scale | 4 / 8 / 12 / 16 / 24 / 32 | design |
 
 ## 3. Shell (FR-NAV-*)
-- **Desktop:** top bar (logo, "Deliver to" text, search with department select, account text, Returns & Orders, cart with count) over a sub-nav of departments. Footer: Back-to-top bar + link columns.
-- **Mobile (<768):** row 1 = hamburger, logo, "Sign in" text, cart with count; row 2 = full-width search; row 3 = horizontally scrollable chip nav. The hamburger opens a focus-trapped drawer (Esc closes). The header is not sticky (matches observation).
-- "Sign in" is a static label in MVP (no account dependency); it must not look broken: it is text, not a dead link.
+- **Desktop (>=1280):** 60px top bar (logo, "Deliver to", search with department select, "EN", account, Returns & Orders, cart with count) over a 39px sub-nav ("All" trigger + observed links). Footer: Back-to-top bar, link columns, lower strip.
+- **Laptop (1024-1279) [D]:** the top bar drops "Deliver to" and "EN" so search keeps >=400px; "Deliver to" moves to a row below the sub-nav.
+- **Tablet (768-1023) [D]:** additionally drops Returns & Orders (still reachable from the drawer); the sub-nav drops Registry, Gift Cards and Sell. Search stays >=330px. The E2E test asserts these widths at 1440, 1280, 1024, 768 and 375.
+- **Mobile (<768):** info strip; row 1 = hamburger, logo, "Sign in >" + person icon, cart with count; row 2 = full-width search (no department picker); row 3 = horizontally scrollable chip row; row 4 = "Deliver to" row. The hamburger opens the drawer. The header is not sticky (matches observation).
+- **One DOM, no duplicated controls:** the top bar is a CSS grid whose areas change per breakpoint (`.header-grid` in `app/globals.css`); only the sub-nav/chip navs and the two "Deliver to" variants are separate elements.
+- **Unbuilt destinations are intentionally inert [D]:** `NavLink` renders a real link only for routes listed in `AVAILABLE_ROUTES` (`lib/nav.ts`); every other destination renders as a disabled `role="link"` (`aria-disabled`, not focusable, no hover, tooltip "Not available in this build yet", "Soon" tag in the drawer). Each slice adds its routes to that list in the same commit (S3 `/s`, S4 `/cart`, S5 `/orders`). "Sign in" is therefore inert text-styled entry in MVP (no account dependency).
+- **Menu drawer [D]:** a native modal `<dialog>` (focus trap, Esc, inert background, focus restore to the trigger come from the platform); backdrop click and the close button also close it; sections: Home, Shop by Department (the six departments), Help & Settings. Its contents were not observed on amazon.com.
+- **Mobile info strip [D]:** amazon.com shows an "install our app" strip; there is no app here, so the strip carries the project disclaimer and its dismiss button really dismisses it.
+- **Chrome interaction [D]:** interactive items on dark chrome get a 1px white hover border and a white focus ring (the link blue lacks contrast on `#131921`); the search field shows an orange focus ring; the search button is `type="submit"` in a real GET form to `/s` whose destination arrives in S3.
+- **Wordmark:** our own text wordmark ("Amazon" + orange "Rebuild"), not an Amazon asset. Departments: Electronics, Computers, Home & Kitchen, Books, Toys & Games, Beauty & Personal Care.
 - The location banner is not built (geo behavior is out of scope).
 
 ## 4. Home (FR-HOME-*)

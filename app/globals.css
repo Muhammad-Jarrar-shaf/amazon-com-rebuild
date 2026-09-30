@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 /*
- * Design tokens. Values marked "measured" come from amazon.com computed styles
- * (docs/ux-spec.md); the rest are our own choices and may be tuned in polish.
- * Tailwind's default breakpoints (sm 640, md 768, lg 1024) match the ux-spec.
+ * Design tokens. "measured" = read from amazon.com computed styles (docs/ux-spec.md);
+ * "design" = our own choice, not measured. Tailwind's default breakpoints
+ * (sm 640, md 768, lg 1024) match the ux-spec.
  */
 @theme {
   --color-nav: #131921; /* measured */
@@ -15,9 +15,26 @@
   --color-cta-hover: #f7ca00; /* design (approx) */
   --color-buy-now: #ffa41c; /* design (approx) */
   --color-search-btn: #febd69; /* design (approx) */
+  --color-search-btn-hover: #f3a847; /* design */
+  --color-search-select: #e6e6e6; /* design */
+  --color-search-focus: #ff9900; /* design (search field focus ring) */
   --color-link: #007185; /* design (approx) */
   --color-price-sale: #b12704; /* design (approx) */
+  --color-strip: #37475a; /* design: mobile delivery row, back-to-top bar */
+  --color-strip-hover: #485769; /* design */
+  --color-footer-deep: #131a22; /* design: lower footer strip */
+  --color-footer-link: #dddddd; /* design */
+  --color-banner: #eaeded; /* design: mobile info strip */
   --font-sans: Arial, "Helvetica Neue", Helvetica, sans-serif;
+}
+
+/* Layout constants. Header/sub-nav/search heights are measured at 1440px; --tap is the 44px touch target. */
+:root {
+  --header-h: 60px;
+  --subnav-h: 39px;
+  --search-h: 38px;
+  --tap: 44px;
+  --shell-max: 1500px;
 }
 
 @layer base {
@@ -37,4 +54,110 @@
     outline: 2px solid var(--color-link);
     outline-offset: 2px;
   }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* The link blue has poor contrast on the dark chrome, so focus rings there are white. */
+[data-surface="dark"] :focus-visible {
+  outline-color: #fff;
+}
+
+/* Interactive header/nav item: 1px transparent border that turns white on hover (links and buttons only;
+   destinations that are not built yet render as spans and get no hover affordance). */
+@utility nav-item {
+  border: 1px solid transparent;
+  border-radius: 2px;
+  &:is(a, button):hover {
+    border-color: #fff;
+  }
+}
+
+/*
+ * Header layout by grid areas so one DOM serves every width (no duplicated controls):
+ *  <768   : [menu logo account cart] / [search across]   (logo track flexes, so the row can never overflow)
+ *  768+   : [logo search account cart]
+ *  1024+  : [logo search account orders cart]
+ *  1280+  : [logo deliver search lang account orders cart]   (search keeps >=500px at every step)
+ */
+.header-grid {
+  display: grid;
+  align-items: center;
+  column-gap: 4px;
+  padding-inline: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "menu logo account cart"
+    "search search search search";
+}
+
+@media (min-width: 48rem) {
+  .header-grid {
+    height: var(--header-h);
+    column-gap: 8px;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "logo search account cart";
+  }
+}
+
+@media (min-width: 64rem) {
+  .header-grid {
+    grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "logo search account orders cart";
+  }
+}
+
+@media (min-width: 80rem) {
+  .header-grid {
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto auto auto;
+    grid-template-areas: "logo deliver search lang account orders cart";
+  }
+}
+
+/* Menu drawer: a native modal <dialog> (focus trap, Esc, inert page and focus restore come from the platform). */
+dialog.nav-drawer {
+  position: fixed;
+  inset: 0 auto 0 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: min(85vw, 22rem);
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  background: #fff;
+  color: var(--color-ink);
+  translate: -100% 0;
+  transition:
+    translate 0.2s ease-out,
+    overlay 0.2s allow-discrete,
+    display 0.2s allow-discrete;
+}
+
+dialog.nav-drawer[open] {
+  translate: 0 0;
+}
+
+@starting-style {
+  dialog.nav-drawer[open] {
+    translate: -100% 0;
+  }
+}
+
+dialog.nav-drawer::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.nav-drawer {
+    transition: none;
+  }
+}
+
+body:has(dialog[open]) {
+  overflow: hidden;
 }

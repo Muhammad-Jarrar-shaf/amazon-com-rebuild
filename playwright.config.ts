@@ -37,7 +37,8 @@ export default defineConfig({
     : {
         command: `pnpm build && pnpm start --port ${PORT}`,
         url: `http://localhost:${PORT}`,
-        reuseExistingServer: !process.env.CI,
+        // Fresh build by default: silently reusing a stale server would test old code. Opt in with E2E_REUSE_SERVER=1.
+        reuseExistingServer: process.env.E2E_REUSE_SERVER === "1",
         timeout: 240_000,
       },
 });

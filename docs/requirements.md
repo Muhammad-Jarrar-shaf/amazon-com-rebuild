@@ -10,7 +10,7 @@ Journeys: **J1** golden path, **J2** browse, **J3** cart, **J4** mobile smoke, *
 | ID | Requirement | Origin | Pri | Journeys |
 |---|---|---|---|---|
 | FR-NAV-1 | Every page has a header: logo links to `/`; search with department dropdown; "Returns & Orders" links to `/orders`; cart icon links to `/cart` and shows the live item count | O | MVP | all |
-| FR-NAV-2 | A sub-nav lists departments; each links to results scoped to that department | O | MVP | J2 |
+| FR-NAV-2 | The sub-nav shows the observed items: an "All" menu trigger, then Prime Video, Coupons, Customer Service, Today's Deals, Registry, Gift Cards, Sell. "All" opens a drawer that lists the six departments, each linking to results scoped to that department (departments are also in the search dropdown). Items whose destination is not built yet are visibly inert, never a 404 (see [ux-spec.md](ux-spec.md#3-shell-fr-nav-)) | O | MVP | J2 |
 | FR-NAV-3 | Footer with link columns and a "Back to top" control that scrolls to top | O | MVP | |
 | FR-NAV-4 | Below 768px: hamburger opens a drawer with departments; search is a full-width row under the top row; a horizontally scrollable chip nav is shown | O | MVP | J4 |
 
