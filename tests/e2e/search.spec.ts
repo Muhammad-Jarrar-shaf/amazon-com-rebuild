@@ -409,6 +409,88 @@ test.describe("page title on client navigation (regression)", () => {
   });
 });
 
+test.describe("typing immediately after the results page loads", () => {
+  // Regression: the header field starts empty and learns the URL after hydration. That sync used to overwrite
+  // whatever the shopper had typed by then: "laptop" became "headphones", "headphonesaptop" or "headphoneslaptop",
+  // and Enter searched it. The shopper does not wait for hydration, so neither do these tests.
+  const noConsoleErrors = (page: Page) => {
+    const problems: string[] = [];
+    page.on("console", (message) => {
+      if (message.type() === "error") problems.push(message.text());
+    });
+    return problems;
+  };
+
+  test("text typed before the page hydrates is kept and searched", async ({ page }) => {
+    const problems = noConsoleErrors(page);
+    // Hold the JavaScript back so the keystrokes deterministically land in the server-rendered field.
+    let release!: () => void;
+    const scripts = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/_next/static/chunks/**", async (route) => {
+      await scripts;
+      await route.continue();
+    });
+    await page.goto("/s?k=headphones", { waitUntil: "commit" });
+    await searchBox(page).focus();
+    await page.keyboard.type("laptop");
+    release();
+    await expect(page.getByRole("combobox", { name: "Search Amazon Rebuild", expanded: true })).toBeVisible(); // hydrated: suggestions for "laptop"
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/s\?k=laptop$/);
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await expect(rows(page).first()).toBeVisible();
+    expect(problems).toEqual([]);
+  });
+
+  test("a field clicked while still empty shows the query selected, so typing replaces it instead of appending", async ({ page }) => {
+    const problems = noConsoleErrors(page);
+    let release!: () => void;
+    const scripts = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/_next/static/chunks/**", async (route) => {
+      await scripts;
+      await route.continue();
+    });
+    await page.goto("/s?k=headphones", { waitUntil: "commit" });
+    await searchBox(page).focus(); // the server-rendered field is still empty
+    release();
+    await expect(searchBox(page)).toHaveValue("headphones");
+    expect(await searchBox(page).evaluate((input: HTMLInputElement) => [input.selectionStart, input.selectionEnd])).toEqual([0, 10]);
+    await page.keyboard.type("laptop");
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/s\?k=laptop$/);
+    expect(problems).toEqual([]);
+  });
+
+  test("replacing the query right away works whether the keys land before or after the URL sync", async ({ page }) => {
+    const problems = noConsoleErrors(page);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 }); // a phone-speed CPU widens the window
+    await page.goto("/s?k=headphones", { waitUntil: "commit" });
+    await searchBox(page).focus();
+    await page.keyboard.press("ControlOrMeta+A"); // replace whatever the field shows, as a shopper would
+    await page.keyboard.type("laptop");
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/\/s\?k=laptop$/);
+    expect(problems).toEqual([]);
+  });
+
+  test("an untouched field still shows the URL query, and later URL changes still update it", async ({ page }) => {
+    await page.goto("/s?k=headphones");
+    await expect(searchBox(page)).toHaveValue("headphones");
+    await page.goto("/s?k=laptop");
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await page.goBack();
+    await expect(searchBox(page)).toHaveValue("headphones");
+    await page.reload();
+    await expect(searchBox(page)).toHaveValue("headphones");
+  });
+});
+
 test.describe("URL state", () => {
   test("a direct URL restores query, sort, filters and page; refresh keeps them", async ({ page, isMobile }) => {
     await page.goto("/s?k=audio&brand=Voxel&rating=4&min=20&max=150&sort=price-asc");
@@ -450,9 +532,6 @@ test.describe("URL state", () => {
 
   test("the search field follows the URL on Back and Forward", async ({ page }) => {
     await page.goto("/s?k=headphones");
-    // The field is filled from the URL by an effect after hydration. Typing before that merged the texts under load
-    // ("headphoneslaptop"), a known S3 race recorded in docs/testing-strategy.md; this test is about Back/Forward.
-    await expect(searchBox(page)).toHaveValue("headphones");
     await searchBox(page).fill("laptop");
     await searchBox(page).press("Enter");
     await expect(page).toHaveURL(/\/s\?k=laptop$/);

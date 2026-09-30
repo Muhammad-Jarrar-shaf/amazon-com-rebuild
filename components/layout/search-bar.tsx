@@ -1,21 +1,22 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
+import { Suspense, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { CaretDownIcon, SearchIcon } from "@/components/icons";
 import { ALL_DEPARTMENTS_LABEL, DEPARTMENTS } from "@/lib/departments";
+import { shouldSyncFieldFromUrl } from "@/lib/search/field-sync";
 import { splitSuggestion, suggest, type SuggestionTerm } from "@/lib/search/suggest";
 import { buildSearchUrl, cleanQuery, isDepartmentSlug } from "@/lib/search/url";
 import { SITE } from "@/lib/site";
 
-/** Keeps the field in step with the URL on the results page (back/forward, filter changes). Renders nothing. */
-function SyncWithUrl({ onSync }: { onSync: (query: string, dept: string) => void }) {
+/** Reports the URL so the field can follow it (Back/Forward, searches, filter changes). Renders nothing. */
+function SyncWithUrl({ onSync }: { onSync: (pathname: string, query: string, dept: string) => void }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const query = params.get("k") ?? params.get("q") ?? "";
   const dept = params.get("dept") ?? "";
   useEffect(() => {
-    if (pathname === "/s") onSync(query, dept);
+    onSync(pathname, query, dept);
   }, [pathname, query, dept, onSync]);
   return null;
 }
@@ -51,8 +52,40 @@ export function SearchBar({ className = "", terms }: SearchBarProps) {
     setActive(-1);
   };
 
-  // Must be stable: SyncWithUrl re-runs its effect when this changes, which would overwrite what is being typed.
-  const syncWithUrl = useCallback((urlQuery: string, urlDept: string) => {
+  // Typed (or a department picked) since the page loaded, and the URL last synced into the field.
+  const edited = useRef(false);
+  const syncedUrl = useRef<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectAfterSync = useRef(false);
+
+  // Text typed into the server-rendered field before hydration stays in the DOM, but React fires no onChange for it.
+  // Adopt it before the first URL sync (a passive effect) runs. The field has autocomplete="off", so the browser never
+  // restores stale text here; anything present is the shopper's typing.
+  useLayoutEffect(() => {
+    const input = inputRef.current;
+    if (input && input.value !== "") {
+      edited.current = true;
+      setQuery(input.value);
+      setOpen(document.activeElement === input);
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!selectAfterSync.current) return;
+    selectAfterSync.current = false;
+    inputRef.current?.select();
+  }, [query]);
+
+  // Must be stable: SyncWithUrl re-runs its effect when this changes. The first sync after load (the field is empty
+  // until then) is skipped if the shopper has already typed, so hydration never overwrites their text.
+  const syncWithUrl = useCallback((pathname: string, urlQuery: string, urlDept: string) => {
+    const url = JSON.stringify([pathname, urlQuery, urlDept]);
+    const firstSync = syncedUrl.current === null;
+    const apply = shouldSyncFieldFromUrl(syncedUrl.current, url, edited.current);
+    syncedUrl.current = url;
+    if (!apply || pathname !== "/s") return;
+    // The shopper already clicked into the (then empty) field: select the query so typing replaces it, not appends.
+    selectAfterSync.current = firstSync && urlQuery !== "" && document.activeElement === inputRef.current;
     setQuery(urlQuery);
     setDept(isDepartmentSlug(urlDept) ? urlDept : "");
     setOpen(false);
@@ -116,7 +149,10 @@ export function SearchBar({ className = "", terms }: SearchBarProps) {
             id={deptId}
             name="dept"
             value={dept}
-            onChange={(event) => setDept(event.target.value)}
+            onChange={(event) => {
+              edited.current = true;
+              setDept(event.target.value);
+            }}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           >
             <option value="">{ALL_DEPARTMENTS_LABEL}</option>
@@ -128,6 +164,7 @@ export function SearchBar({ className = "", terms }: SearchBarProps) {
           </select>
         </div>
         <input
+          ref={inputRef}
           type="search"
           name="k"
           role="combobox"
@@ -141,6 +178,7 @@ export function SearchBar({ className = "", terms }: SearchBarProps) {
           enterKeyHint="search"
           value={query}
           onChange={(event) => {
+            edited.current = true;
             setQuery(event.target.value);
             setOpen(true);
             setActive(-1);
