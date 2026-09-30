@@ -28,6 +28,7 @@ Every statement is tagged: **[O] observed**, **[I] inferred / not observable**, 
 - Hero carousel, ~6 slides, right-arrow control, full-bleed. [O]
 - Below it, **overlapping 4-up cards**: 344px wide, 12px padding, white, 0 radius *measured* at 1440px. Each card = 24px bold headline + arrow, then a **2x2 grid of captioned image tiles** (e.g. Headphones, Tablets, Gaming, Speakers). Rows repeat (electronics, PCs, fitness, apparel under $25, home, fashion, beauty, pets). [O]
 - Ends with "See personalized recommendations". [O]
+- Our home (S6) keeps this structure but its content is ours: 4 hero slides with our own copy (no autoplay), 8 cards whose headlines and tiles map to our 6 departments, one "Popular products" rail instead of personalized recommendations. [D] Amazon's slide copy, card themes (fitness, apparel, fashion, pets) and hero autoplay timing were not copied or tested.
 
 ### Search
 - Suggestions: ~10 rows, bold completed portion, some thumbnails, plus a row of price-range chips. [O]
@@ -72,7 +73,7 @@ Address entry, delivery-speed selection, payment step, order review, confirmatio
 | Amazon behavior | Decision | Class |
 |---|---|---|
 | Header, department dropdown, suggestions | Faithful header; local suggestions | Faithful / simplified |
-| Home overlapping category cards + hero | Faithful; 3-4 hero slides | Faithful |
+| Home overlapping category cards + hero | Faithful layout; 4 hero slides, no autoplay; 8 cards scoped to our departments; one featured rail; our own copy | Faithful |
 | List-row results, sort, facets, pagination | List rows; 3 filters (Brand, Rating, Price); 4 sorts; numbered pagination | Simplified |
 | PDP 3-column + buy box + swatches + qty | High fidelity | Faithful |
 | Countdown, "bought in past month", Amazon's Choice | Seed-derived badges; deterministic, no live timers | Simulated |
