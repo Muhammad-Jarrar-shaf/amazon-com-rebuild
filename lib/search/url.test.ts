@@ -10,6 +10,7 @@ import {
   parseSearchParams,
   toggleBrand,
   updateSearch,
+  withoutEmptyParams,
 } from "@/lib/search/url";
 
 const parse = (query: string) => parseSearchParams(new URLSearchParams(query));
@@ -148,3 +149,26 @@ describe("state helpers", () => {
     expect(hasCriteria({ ...DEFAULT_SEARCH_STATE, minRating: 4 })).toBe(true);
   });
 });
+
+describe("withoutEmptyParams", () => {
+  it("drops the empty department a plain form submission sends", () => {
+    expect(withoutEmptyParams({ dept: "", k: "laptop" })).toBe("/s?k=laptop");
+  });
+
+  it("keeps non-empty parameters, repeated values and their order", () => {
+    expect(withoutEmptyParams({ k: "", dept: "electronics", brand: ["Halo Audio", "", "Voxel"], sort: "price-asc" })).toBe(
+      "/s?dept=electronics&brand=Halo+Audio&brand=Voxel&sort=price-asc",
+    );
+  });
+
+  it("returns null when nothing is empty, so canonical URLs are never redirected", () => {
+    expect(withoutEmptyParams({ k: "laptop", dept: "electronics" })).toBeNull();
+    expect(withoutEmptyParams({})).toBeNull();
+    expect(withoutEmptyParams({ max: " " })).toBeNull(); // not empty: the parser ignores it
+  });
+
+  it("an all-empty query string becomes plain /s", () => {
+    expect(withoutEmptyParams({ dept: "", k: "" })).toBe("/s");
+  });
+});
+

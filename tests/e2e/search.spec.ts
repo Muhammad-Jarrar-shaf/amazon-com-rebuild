@@ -491,6 +491,39 @@ test.describe("typing immediately after the results page loads", () => {
   });
 });
 
+test.describe("canonical search URLs", () => {
+  // Regression (G1): Enter pressed before hydration submits the plain GET form, which always sends the department
+  // <select>, even when it is "All Departments": /s?dept=&k=laptop. The contract omits empty/default parameters, so /s
+  // redirects such URLs to their canonical form.
+  test("a search submitted before hydration lands on the canonical URL, without an empty dept", async ({ page }) => {
+    let release!: () => void;
+    const scripts = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/_next/static/chunks/**", async (route) => {
+      await scripts;
+      await route.continue();
+    });
+    await page.goto("/s?k=headphones", { waitUntil: "commit" });
+    await searchBox(page).fill("laptop");
+    await searchBox(page).press("Enter"); // no JavaScript yet: the browser submits the form itself
+    await expect(page).toHaveURL(/\/s\?k=laptop$/);
+    release();
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await expect(rows(page).first()).toBeVisible();
+  });
+
+  test("empty parameters are dropped from a direct URL; non-empty ones and their order are kept", async ({ page }) => {
+    await page.goto("/s?dept=&k=laptop");
+    await expect(page).toHaveURL(/\/s\?k=laptop$/);
+    await expect(searchBox(page)).toHaveValue("laptop");
+    await page.goto("/s?k=&dept=electronics&brand=&sort=price-asc");
+    await expect(page).toHaveURL(/\/s\?dept=electronics&sort=price-asc$/);
+    await expect(sortSelect(page)).toHaveValue("price-asc");
+    await page.goto("/s?k=wireless&dept=electronics");
+    await expect(page).toHaveURL(/\/s\?k=wireless&dept=electronics$/);
+  });
+});
+
 test.describe("URL state", () => {
   test("a direct URL restores query, sort, filters and page; refresh keeps them", async ({ page, isMobile }) => {
     await page.goto("/s?k=audio&brand=Voxel&rating=4&min=20&max=150&sort=price-asc");

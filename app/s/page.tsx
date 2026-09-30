@@ -12,7 +12,7 @@ import { getDepartment } from "@/lib/departments";
 import { estimateDelivery } from "@/lib/delivery";
 import { searchCatalog } from "@/lib/search/server";
 import { summarizeResults } from "@/lib/search/summary";
-import { buildSearchUrl, hasCriteria, parseSearchParams } from "@/lib/search/url";
+import { buildSearchUrl, hasCriteria, parseSearchParams, withoutEmptyParams } from "@/lib/search/url";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -26,12 +26,16 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 /**
  * Search and browse results (FR-SRCH-*). The URL is the only state: it is parsed into a SearchState, run through the
  * pure search pipeline (lib/search), and rendered on the server. A page number past the end is redirected to the last
- * page, so a stale link resolves predictably instead of showing an empty page. Links to /s are not prefetched
+ * page, so a stale link resolves predictably instead of showing an empty page; a URL with empty parameters (the plain
+ * form's "dept=" when it is submitted before hydration) is redirected to its canonical form. Links to /s are not prefetched
  * (prefetch={false} in NavLink and the search components): prefetched head data was reused across different search URLs
  * on client navigation and showed the wrong tab title.
  */
 export default async function SearchPage({ searchParams }: { searchParams: SearchParams }) {
-  const state = parseSearchParams(await searchParams);
+  const raw = await searchParams;
+  const canonical = withoutEmptyParams(raw);
+  if (canonical) redirect(canonical);
+  const state = parseSearchParams(raw);
   if (!hasCriteria(state)) return <EmptyQueryState />;
 
   const { page, facets, baseTotal } = searchCatalog(state);

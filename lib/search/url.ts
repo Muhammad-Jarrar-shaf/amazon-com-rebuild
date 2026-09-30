@@ -121,3 +121,24 @@ export function clearFilters(state: SearchState): SearchState {
 export function hasCriteria(state: SearchState): boolean {
   return state.query !== "" || state.dept !== undefined || hasActiveFilters(state);
 }
+
+/**
+ * The canonical form of a results URL whose query string carries empty parameters, or null when there are none. The
+ * header form submits "dept=" for All Departments when the browser sends it itself (Enter before hydration, or no
+ * JavaScript); the contract omits empty and default parameters, so /s redirects there. Everything else, including
+ * unknown parameters and the order, is kept as it came.
+ */
+export function withoutEmptyParams(raw: Record<string, string | string[] | undefined>): string | null {
+  const params = new URLSearchParams();
+  let dropped = false;
+  for (const [key, value] of Object.entries(raw)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item === undefined || item === "") dropped = true;
+      else params.append(key, item);
+    }
+  }
+  if (!dropped) return null;
+  const text = params.toString();
+  return text ? `/s?${text}` : "/s";
+}
+
